@@ -1,0 +1,16 @@
+enum TypeHandlerEnum {
+  success,
+  noContent,
+  badRequest,
+  forbidden,
+  unauthorised,
+  notFound,
+  internalServerError,
+  connectTimeout,
+  cancel,
+  receiveTimeout,
+  sendTimeout,
+  cacheError,
+  noInternetConnection,
+  unknown,
+}
