@@ -29,10 +29,15 @@ class AuthRemoteDataSource {
       }
     }
 
-    final otp = (1000 + Random().nextInt(9000)).toString();
+    final otp = (100000 + Random().nextInt(900000)).toString();
     final hashedOtp = sha256.convert(utf8.encode(otp)).toString();
 
-    final message = "Your verification code is $otp";
+    final message = """
+[Offline SMS]
+رمز التحقق الخاص بك هو: $otp
+
+لا تشارك هذا الرمز مع أي شخص.
+""";
     final url = Uri.parse(
       "https://tweetsms.ps/api.php?comm=sendsms&api_key=$_apiKey&to=${request.phone}&message=$message&sender=$_sender",
     );

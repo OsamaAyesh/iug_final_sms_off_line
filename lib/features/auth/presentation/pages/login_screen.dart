@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:app_mobile/core/resources/manager_colors.dart';
 import 'package:app_mobile/core/resources/manager_font_size.dart';
 import 'package:app_mobile/core/resources/manager_height.dart';
@@ -8,15 +9,18 @@ import 'package:app_mobile/core/resources/manager_strings.dart';
 import 'package:app_mobile/core/resources/manager_styles.dart';
 import 'package:app_mobile/core/resources/manager_width.dart';
 import 'package:app_mobile/features/auth/presentation/widgets/back_ground_auth_widget.dart';
-
 import '../../../../core/widgets/button_app.dart';
 import '../../../../core/widgets/custom_animated_phone_field.dart';
+import '../controller/auth_controller.dart';
+import 'otp_screen.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final controller = Get.find<AuthController>();
+
     final TextEditingController nameController = TextEditingController();
     final TextEditingController phoneController = TextEditingController();
 
@@ -104,7 +108,20 @@ class LoginScreen extends StatelessWidget {
                       ButtonApp(
                         title: ManagerStrings.enterDataLogin4,
                         paddingWidth: 0,
-                        onPressed: (){},
+                        onPressed: () async {
+                          final controller = Get.find<AuthController>();
+                          await controller.sendOtp(
+                            nameController.text.trim(),
+                            phoneController.text.trim(),
+                          );
+
+                          if (controller.isOtpSent.value) {
+                            Get.to(() => OtpScreen(
+                              phone: phoneController.text.trim(),
+                              name: nameController.text.trim(),
+                            ));
+                          }
+                        },
                       ),
                     ],
                   ),
@@ -138,3 +155,4 @@ class LoginScreen extends StatelessWidget {
     );
   }
 }
+

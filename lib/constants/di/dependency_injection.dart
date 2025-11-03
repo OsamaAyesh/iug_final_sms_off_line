@@ -2,6 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
 import 'package:get_it/get_it.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +13,8 @@ import '../../core/internet_checker/interent_checker.dart';
 import '../../core/network/app_api.dart';
 import '../../core/network/dio_factory.dart';
 import '../../core/storage/local/app_settings_prefs.dart';
+import '../../features/auth/domain/di/auth_di.dart';
+import '../../features/auth/presentation/controller/auth_controller.dart';
 import '../../firebase_options.dart';
 
 final instance = GetIt.instance;
@@ -59,4 +63,9 @@ initModule() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // 🟩 Auth DI Injection
+  Get.lazyPut<AuthDI>(() => AuthDI(), fenix: true);
+
+  // 🟦 Auth Controller Injection
+  Get.lazyPut<AuthController>(() => AuthController(), fenix: true);
 }
