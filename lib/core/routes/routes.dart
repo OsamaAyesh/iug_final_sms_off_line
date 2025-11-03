@@ -1,10 +1,12 @@
 import 'package:app_mobile/features/splash_and_boarding/presentation/pages/splash_screen.dart';
 import 'package:flutter/material.dart';
+import '../../features/auth/presentation/pages/login_screen.dart';
 import '../resources/manager_strings.dart';
 
 /// A class defined for all routes constants
 class Routes {
   static const String splash = '/splash';
+  static const String login = '/login';
 }
 
 class RouteGenerator {
@@ -12,6 +14,8 @@ class RouteGenerator {
     switch (settings.name) {
       case Routes.splash:
         return MaterialPageRoute(builder: (_) => const SplashScreen());
+      case Routes.login:
+        return MaterialPageRoute(builder: (_) => const LoginScreen());
       default:
         return unDefinedRoute();
     }

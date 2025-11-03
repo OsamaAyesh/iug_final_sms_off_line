@@ -2,6 +2,10 @@ import 'package:easy_localization/easy_localization.dart';
 
 /// A class defined for strings the app
 class ManagerStrings {
+  static String get loginTitleScreen => "ابدأ التواصل الآن";
+  static String get loginSubTitleScreen => "أدخل رقم جوالك وابدأ استخدام تطبيق Offline SMS للتواصل بسهولة وبدون انترنت";
+
+
   /// Config Strings
   static String get noRouteFound => tr('noRouteFound');
 
