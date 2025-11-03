@@ -5,5 +5,6 @@ class ManagerImages {
   static const String logo="$imagesPath/logo_app.png";
   static const String backgroundImageSplash="$imagesPath/background_splash_screen.png";
   static const String backgroundLogin="$imagesPath/background_login.png";
+  static const String screenOnBoardingImage="$imagesPath/screen_on_boarding_image.png";
 
 }

@@ -4,6 +4,15 @@ import 'package:easy_localization/easy_localization.dart';
 class ManagerStrings {
   static String get loginTitleScreen => "ابدأ التواصل الآن";
   static String get loginSubTitleScreen => "أدخل رقم جوالك وابدأ استخدام تطبيق Offline SMS للتواصل بسهولة وبدون انترنت";
+  static String get loginPrivacyPolicy => "بالضغط على تسجيل مستخدم جديد، فانت توافق على سياسة الاستخدام والخصوصية!";
+  static String get enterDataLogin => "أدخل المعلومات التالية";
+  static String get enterDataLogin1 => "الاسم بالكامل";
+  static String get enterDataLogin2 => "رقم الهاتف";
+  static String get enterDataLogin3 => "يجب أن يبدأ رقم الهاتف بـ 05";
+  static String get enterDataLogin4 => "تسجيل الدخول";
+  static String get hintPrivacyLogin1 => "بالضغط على تسجيل مستخدم جديد، فأنت توافق على ";
+  static String get hintPrivacyLogin2 => "سياسة الخصوصية";
+
 
 
   /// Config Strings

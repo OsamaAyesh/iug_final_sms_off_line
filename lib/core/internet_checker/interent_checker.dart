@@ -8,12 +8,12 @@ abstract class NetworkInfo {
 }
 
 class NetworkInfoImp implements NetworkInfo {
-  final InternetConnectionCheckerPlus _internetConnectionChecker;
+  final InternetConnection _internetConnectionChecker;
 
   NetworkInfoImp(this._internetConnectionChecker);
 
   @override
   Future<bool> get isConnected => dotenv.env[EnvConstants.debug].onNullBool()
       ? Future.value(true)
-      : _internetConnectionChecker.hasConnection;
+      : _internetConnectionChecker.hasInternetAccess;
 }

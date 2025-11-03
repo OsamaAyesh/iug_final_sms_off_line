@@ -1,2 +1,0 @@
-D:/flutterprojects/iug_final_sms_off_line/android/app/.cxx/Debug/2d5a2b3k/x86/CMakeFiles/edit_cache.dir
-D:/flutterprojects/iug_final_sms_off_line/android/app/.cxx/Debug/2d5a2b3k/x86/CMakeFiles/rebuild_cache.dir

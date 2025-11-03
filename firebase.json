@@ -1,0 +1,43 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "my-whatsapp-f708f",
+          "appId": "1:398545074520:android:1021b6d467d68e4262cd2d",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "my-whatsapp-f708f",
+          "appId": "1:398545074520:ios:3c2424abc6f6804162cd2d",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "my-whatsapp-f708f",
+          "configurations": {
+            "android": "1:398545074520:android:1021b6d467d68e4262cd2d",
+            "ios": "1:398545074520:ios:3c2424abc6f6804162cd2d"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
+}

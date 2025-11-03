@@ -2,7 +2,6 @@ import 'package:app_mobile/core/resources/manager_font_size.dart';
 import 'package:app_mobile/core/resources/manager_styles.dart';
 import 'package:app_mobile/core/resources/manager_width.dart';
 import 'package:flutter/material.dart';
-import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 import '../../../../core/resources/manager_colors.dart';
 import '../../../../core/resources/manager_images.dart';
@@ -89,18 +88,18 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
 
             const SizedBox(height: 20),
 
-            // Page indicator
-            SmoothPageIndicator(
-              controller: _controller,
-              count: onBoardingData.length,
-              effect: ExpandingDotsEffect(
-                activeDotColor: ManagerColors.primaryColor,
-                dotColor: Colors.grey.shade300,
-                dotHeight: 8,
-                dotWidth: 8,
-                expansionFactor: 3,
-              ),
-            ),
+            // // Page indicator
+            // SmoothPageIndicator(
+            //   controller: _controller,
+            //   count: onBoardingData.length,
+            //   effect: ExpandingDotsEffect(
+            //     activeDotColor: ManagerColors.primaryColor,
+            //     dotColor: Colors.grey.shade300,
+            //     dotHeight: 8,
+            //     dotWidth: 8,
+            //     expansionFactor: 3,
+            //   ),
+            // ),
 
             const SizedBox(height: 25),
 

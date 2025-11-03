@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -10,6 +11,7 @@ import '../../core/internet_checker/interent_checker.dart';
 import '../../core/network/app_api.dart';
 import '../../core/network/dio_factory.dart';
 import '../../core/storage/local/app_settings_prefs.dart';
+import '../../firebase_options.dart';
 
 final instance = GetIt.instance;
 
@@ -43,7 +45,7 @@ initModule() async {
 
   if (!GetIt.I.isRegistered<NetworkInfo>()) {
     instance.registerLazySingleton<NetworkInfo>(
-        () => NetworkInfoImp(InternetConnectionCheckerPlus()));
+        () => NetworkInfoImp(InternetConnection()));
   }
 
   if (!GetIt.I.isRegistered<DioFactory>()) {
@@ -53,4 +55,8 @@ initModule() async {
   if (!GetIt.I.isRegistered<AppService>()) {
     instance.registerLazySingleton<AppService>(() => AppService(dio));
   }
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 }
