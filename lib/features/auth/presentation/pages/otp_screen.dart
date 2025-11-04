@@ -10,9 +10,11 @@ import 'package:app_mobile/core/resources/manager_styles.dart';
 import 'package:app_mobile/core/resources/manager_width.dart';
 import 'package:app_mobile/features/auth/presentation/widgets/back_ground_auth_widget.dart';
 import '../../../../core/widgets/button_app.dart';
+import '../../../../core/widgets/loading_widget.dart';
+import '../../../../core/resources/manager_strings.dart';
 import '../controller/auth_controller.dart';
 
-class OtpScreen extends StatelessWidget {
+class OtpScreen extends StatefulWidget {
   final String phone;
   final String name;
 
@@ -23,181 +25,249 @@ class OtpScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final controller = Get.find<AuthController>();
-    final TextEditingController otpController = TextEditingController();
+  State<OtpScreen> createState() => _OtpScreenState();
+}
 
+class _OtpScreenState extends State<OtpScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  final TextEditingController otpController = TextEditingController();
+  final controller = Get.find<AuthController>();
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize animations
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    _fadeAnimation =
+        CurvedAnimation(parent: _animationController, curve: Curves.easeInOut);
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.2),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    ));
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    otpController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
+          /// Background widget
           const BackGroundAuthWidget(),
 
-          /// 🧱 المحتوى الرئيسي
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: ManagerWidth.w16),
-            child: Column(
-              children: [
-                SizedBox(height: ManagerHeight.h97),
+          /// Main content with animation
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: ManagerWidth.w16),
+                child: Column(
+                  children: [
+                    SizedBox(height: ManagerHeight.h97),
 
-                /// 🔒 الأيقونة والعنوان
-                Container(
-                  height: ManagerHeight.h64,
-                  width: ManagerWidth.w64,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: ManagerColors.white.withOpacity(0.1),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: ManagerWidth.w10 ,vertical: ManagerHeight.h10),
-                    child: Image.asset(
-                      ManagerImages.iconLockWithOtp,
-                      height: ManagerHeight.h36,
-                      width: ManagerWidth.w36,
+                    /// Lock icon inside semi-transparent container
+                    Container(
+                      height: ManagerHeight.h64,
+                      width: ManagerWidth.w64,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: ManagerColors.white.withOpacity(0.1),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: ManagerWidth.w10,
+                          vertical: ManagerHeight.h10,
+                        ),
+                        child: Image.asset(
+                          ManagerImages.iconLockWithOtp,
+                          height: ManagerHeight.h36,
+                          width: ManagerWidth.w36,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                SizedBox(height: ManagerHeight.h8),
-                Text(
-                  "أدخل رمز التحقق",
-                  style: getBoldTextStyle(
-                    fontSize: ManagerFontSize.s16,
-                    color: ManagerColors.white,
-                  ),
-                ),
-                SizedBox(height: ManagerHeight.h6),
-                Text(
-                  "لقد قمنا بإرسال رمز التأكيد لرقم الهاتف التالي",
-                  style: getRegularTextStyle(
-                    fontSize: ManagerFontSize.s12,
-                    color: ManagerColors.white,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: ManagerHeight.h4),
-                Text(
-                  phone,
-                  style: getBoldTextStyle(
-                    fontSize: ManagerFontSize.s13,
-                    color: ManagerColors.white,
-                  ),
-                ),
-                SizedBox(height: ManagerHeight.h24),
 
-                /// ⚪ صندوق الإدخال
-                Container(
-                  decoration: BoxDecoration(
-                    color: ManagerColors.white,
-                    borderRadius: BorderRadius.circular(ManagerRadius.r8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: ManagerColors.black.withOpacity(0.08),
-                        offset: const Offset(0, 2),
-                        blurRadius: 20,
-                      ),
-                    ],
-                  ),
-                  padding: EdgeInsets.symmetric(
-                    vertical: ManagerHeight.h20,
-                    horizontal: ManagerWidth.w12,
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        "أدخل الرمز",
-                        style: getBoldTextStyle(
-                          fontSize: ManagerFontSize.s16,
-                          color: ManagerColors.primaryColor,
-                        ),
-                      ),
-                      SizedBox(height: ManagerHeight.h16),
+                    SizedBox(height: ManagerHeight.h8),
 
-                      /// 🔢 حقل الرمز
-                      Directionality(
-                        textDirection: TextDirection.ltr,
-                        child: Pinput(
-                          length: 6,
-                          controller: otpController,
-                          defaultPinTheme: PinTheme(
-                            width: ManagerWidth.w42,
-                            height: ManagerHeight.h52,
-                            textStyle: getBoldTextStyle(
-                              fontSize: ManagerFontSize.s18,
+                    /// Title text
+                    Text(
+                      ManagerStrings.otpTitle,
+                      style: getBoldTextStyle(
+                        fontSize: ManagerFontSize.s16,
+                        color: ManagerColors.white,
+                      ),
+                    ),
+                    SizedBox(height: ManagerHeight.h6),
+
+                    /// Subtitle text
+                    Text(
+                      ManagerStrings.otpSubTitle,
+                      style: getRegularTextStyle(
+                        fontSize: ManagerFontSize.s12,
+                        color: ManagerColors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: ManagerHeight.h4),
+
+                    /// Display user phone
+                    Text(
+                      widget.phone,
+                      style: getBoldTextStyle(
+                        fontSize: ManagerFontSize.s13,
+                        color: ManagerColors.white,
+                      ),
+                    ),
+                    SizedBox(height: ManagerHeight.h24),
+
+                    /// White container for OTP input and button
+                    Container(
+                      decoration: BoxDecoration(
+                        color: ManagerColors.white,
+                        borderRadius:
+                        BorderRadius.circular(ManagerRadius.r8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: ManagerColors.black.withOpacity(0.08),
+                            offset: const Offset(0, 2),
+                            blurRadius: 20,
+                          ),
+                        ],
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        vertical: ManagerHeight.h20,
+                        horizontal: ManagerWidth.w12,
+                      ),
+                      child: Column(
+                        children: [
+                          /// Section title
+                          Text(
+                            ManagerStrings.otpEnterCode,
+                            style: getBoldTextStyle(
+                              fontSize: ManagerFontSize.s16,
                               color: ManagerColors.primaryColor,
                             ),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: ManagerColors.primaryColor,
-                                width: 1,
+                          ),
+                          SizedBox(height: ManagerHeight.h16),
+
+                          /// OTP field
+                          Directionality(
+                            textDirection: TextDirection.ltr,
+                            child: Pinput(
+                              length: 6,
+                              controller: otpController,
+                              defaultPinTheme: PinTheme(
+                                width: ManagerWidth.w42,
+                                height: ManagerHeight.h52,
+                                textStyle: getBoldTextStyle(
+                                  fontSize: ManagerFontSize.s18,
+                                  color: ManagerColors.primaryColor,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: ManagerColors.primaryColor,
+                                    width: 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                      ManagerRadius.r8),
+                                ),
                               ),
-                              borderRadius:
-                              BorderRadius.circular(ManagerRadius.r8),
+                              focusedPinTheme: PinTheme(
+                                width: ManagerWidth.w42,
+                                height: ManagerHeight.h52,
+                                textStyle: getBoldTextStyle(
+                                  fontSize: ManagerFontSize.s18,
+                                  color: ManagerColors.primaryColor,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: ManagerColors.primaryColor
+                                      .withOpacity(0.05),
+                                  border: Border.all(
+                                    color: ManagerColors.primaryColor,
+                                    width: 2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                      ManagerRadius.r8),
+                                ),
+                              ),
                             ),
                           ),
-                          focusedPinTheme: PinTheme(
-                            width: ManagerWidth.w42,
-                            height: ManagerHeight.h52,
-                            textStyle: getBoldTextStyle(
-                              fontSize: ManagerFontSize.s18,
-                              color: ManagerColors.primaryColor,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                              ManagerColors.primaryColor.withOpacity(0.05),
-                              border: Border.all(
-                                color: ManagerColors.primaryColor,
-                                width: 2,
-                              ),
-                              borderRadius:
-                              BorderRadius.circular(ManagerRadius.r8),
+                          SizedBox(height: ManagerHeight.h10),
+
+                          /// Timer text
+                          Text(
+                            ManagerStrings.otpTimer,
+                            style: getRegularTextStyle(
+                              fontSize: ManagerFontSize.s12,
+                              color: ManagerColors.greyWithColor,
                             ),
                           ),
-                        ),
-                      ),
-                      SizedBox(height: ManagerHeight.h10),
+                          SizedBox(height: ManagerHeight.h4),
 
-                      /// ⏱️ نص الوقت
-                      Text(
-                        "00:59",
-                        style: getRegularTextStyle(
-                          fontSize: ManagerFontSize.s12,
-                          color: ManagerColors.greyWithColor,
-                        ),
-                      ),
-                      SizedBox(height: ManagerHeight.h4),
+                          /// Resend message
+                          Text(
+                            "${ManagerStrings.otpDidNotReceive} ${ManagerStrings.otpRequestNew}",
+                            style: getRegularTextStyle(
+                              fontSize: ManagerFontSize.s12,
+                              color: ManagerColors.greyWithColor,
+                            ),
+                          ),
+                          SizedBox(height: ManagerHeight.h16),
 
-                      Text(
-                        "لم تستلم رمزاً ؟ طلب رمز جديد",
-                        style: getRegularTextStyle(
-                          fontSize: ManagerFontSize.s12,
-                          color: ManagerColors.greyWithColor,
-                        ),
+                          /// Verify button
+                          ButtonApp(
+                            title: ManagerStrings.otpVerify,
+                            paddingWidth: 0,
+                            onPressed: () {
+                              controller.verifyOtp(
+                                widget.phone,
+                                otpController.text.trim(),
+                                widget.name,
+                              );
+                            },
+                          ),
+                        ],
                       ),
-                      SizedBox(height: ManagerHeight.h16),
-
-                      /// ✅ زر التحقق
-                      Obx(() {
-                        return controller.isLoading.value
-                            ? const Center(
-                          child: CircularProgressIndicator(),
-                        )
-                            : ButtonApp(
-                          title: "تحقق",
-                          paddingWidth: 0,
-                          onPressed: () {
-                            controller.verifyOtp(
-                              phone,
-                              otpController.text.trim(),
-                              name,
-                            );
-                          },
-                        );
-                      }),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
+
+          /// Loading overlay when verifying
+          Obx(() {
+            if (controller.isLoading.value) {
+              return Container(
+                color: Colors.black.withOpacity(0.35),
+                child: const Center(
+                  child: LoadingWidget(),
+                ),
+              );
+            } else {
+              return const SizedBox.shrink();
+            }
+          }),
         ],
       ),
     );

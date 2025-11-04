@@ -2,6 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 
 /// A class defined for strings the app
 class ManagerStrings {
+
+  ///Login Screen Strings.
   static String get loginTitleScreen => "ابدأ التواصل الآن";
   static String get loginSubTitleScreen => "أدخل رقم جوالك وابدأ استخدام تطبيق Offline SMS للتواصل بسهولة وبدون انترنت";
   static String get loginPrivacyPolicy => "بالضغط على تسجيل مستخدم جديد، فانت توافق على سياسة الاستخدام والخصوصية!";
@@ -13,6 +15,22 @@ class ManagerStrings {
   static String get hintPrivacyLogin1 => "بالضغط على تسجيل مستخدم جديد، فأنت توافق على ";
   static String get hintPrivacyLogin2 => "سياسة الخصوصية";
 
+  ///Otp Screen Strings.
+  static String get otpTitle => "أدخل رمز التحقق";
+  static String get otpSubTitle => "لقد قمنا بإرسال رمز التأكيد لرقم الهاتف التالي";
+  static String get otpEnterCode => "أدخل الرمز";
+  static String get otpDidNotReceive => "لم تستلم رمزاً ؟";
+  static String get otpRequestNew => "طلب رمز جديد";
+  static String get otpVerify => "تحقق";
+  static String get otpTimer => "00:59";
+
+  // Success Verify Screen Strings
+  static String get successTitle => "تهانينا!";
+  static String get successDescription =>
+      "لقد تم التحقق من الرمز بنجاح، يمكنك الآن متابعة العمل مع جميع مزايا تطبيقنا وقتاً سعيداً.";
+  static String get successButton => "الذهاب إلى الرئيسية";
+  static String get successPrivacyLink => "تصفح سياسات الاستخدام والخصوصية";
+  static String get successWarning => "القسم قيد التطوير";
 
 
   /// Config Strings

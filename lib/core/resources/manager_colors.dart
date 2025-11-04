@@ -7,6 +7,7 @@ class ManagerColors {
   static const Color black = Colors.black;
   static const Color greyOnBoarding = Color(0XFF656565);
   static const Color greyWithColor = Color(0XFF9F9696);
+  static const Color greySuccess = Color(0XFF7A7A7A);
   static const Color transparent = Colors.transparent;
 
 }
