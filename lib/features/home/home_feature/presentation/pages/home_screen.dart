@@ -1,3 +1,4 @@
+import 'package:app_mobile/core/widgets/loading_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -7,6 +8,8 @@ import '../../../../../core/resources/manager_font_size.dart';
 import '../../../../../core/resources/manager_height.dart';
 import '../../../../../core/resources/manager_styles.dart';
 import '../../../../../core/resources/manager_width.dart';
+import '../../../../../core/util/empty_state_widget.dart';
+import '../../../group_chat/presentation/pages/group_chat_screen.dart';
 import '../controller/chat_controller.dart';
 import '../widgets/custom_tab_switcher_trader.dart';
 
@@ -56,7 +59,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ✅ رأس الصفحة (العنوان + البحث + الصورة)
   Widget _buildHeader() {
     return Container(
       color: ManagerColors.primaryColor,
@@ -71,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               Text(
                 "المحادثات",
-                style: getBoldTextStyle(
+                style: getRegularTextStyle(
                   fontSize: ManagerFontSize.s20,
                   color: Colors.white,
                 ),
@@ -113,32 +115,46 @@ class _HomeScreenState extends State<HomeScreen>
             child: TextField(
               controller: controller.searchController,
               onChanged: controller.onSearchChanged,
+              textAlignVertical: TextAlignVertical.center, // ✅ يجعل النص في المنتصف
+              style: getRegularTextStyle(
+                fontSize: ManagerFontSize.s12,
+                color: ManagerColors.black,
+              ),
               decoration: InputDecoration(
                 hintText: "ابحث في المحادثات...",
+                hintStyle: getRegularTextStyle(
+                  fontSize: ManagerFontSize.s12,
+                  color: ManagerColors.greyWithColor,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: Colors.grey,
+                  size: 20,
+                ),
                 border: InputBorder.none,
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                contentPadding: EdgeInsets.symmetric(
+                  vertical: ManagerHeight.h10, // ✅ ضبط التوسيط العمودي
+                  horizontal: ManagerWidth.w10,
+                ),
               ),
             ),
-          ),
+          )
         ],
       ),
     );
   }
 
-  // ✅ قائمة المحادثات
   Widget _buildChatList() {
     return Obx(() {
       if (controller.isLoading.value) {
-        return const Center(child: CircularProgressIndicator());
+        return const Center(child: LoadingWidget());
       }
 
       final chats = controller.filteredChats;
       if (chats.isEmpty) {
         return const Center(
-          child: Text(
-            "لا توجد محادثات حالياً",
-            style: TextStyle(color: Colors.grey),
+          child: EmptyStateWidget(
+            messageAr: "لا يوجد محادثات",
           ),
         );
       }
@@ -196,6 +212,14 @@ class _HomeScreenState extends State<HomeScreen>
 
   // ✅ تصميم المجموعة
   Widget _buildGroupTile(chat) => ListTile(
+    onTap: () {
+      Get.to(() => ChatGroupScreen(
+        groupId: chat.id,
+        groupName: chat.name,
+        groupImage: chat.imageUrl,
+        participantsCount: chat.membersCount.toString(),
+      ));
+    },
     contentPadding: EdgeInsets.symmetric(
       horizontal: ManagerWidth.w16,
       vertical: ManagerHeight.h8,
