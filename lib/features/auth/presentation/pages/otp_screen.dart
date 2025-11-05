@@ -40,7 +40,6 @@ class _OtpScreenState extends State<OtpScreen>
   void initState() {
     super.initState();
 
-    // Initialize animations
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -82,186 +81,192 @@ class _OtpScreenState extends State<OtpScreen>
               position: _slideAnimation,
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: ManagerWidth.w16),
-                child: Column(
-                  children: [
-                    SizedBox(height: ManagerHeight.h97),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      SizedBox(height: ManagerHeight.h97),
 
-                    /// Lock icon inside semi-transparent container
-                    Container(
-                      height: ManagerHeight.h64,
-                      width: ManagerWidth.w64,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: ManagerColors.white.withOpacity(0.1),
+                      /// Lock icon
+                      Container(
+                        height: ManagerHeight.h64,
+                        width: ManagerWidth.w64,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          color: ManagerColors.white.withOpacity(0.1),
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: ManagerWidth.w10,
+                            vertical: ManagerHeight.h10,
+                          ),
+                          child: Image.asset(
+                            ManagerImages.iconLockWithOtp,
+                            height: ManagerHeight.h36,
+                            width: ManagerWidth.w36,
+                          ),
+                        ),
                       ),
-                      child: Padding(
+
+                      SizedBox(height: ManagerHeight.h8),
+
+                      /// Title text
+                      Text(
+                        ManagerStrings.otpTitle,
+                        style: getBoldTextStyle(
+                          fontSize: ManagerFontSize.s16,
+                          color: ManagerColors.white,
+                        ),
+                      ),
+                      SizedBox(height: ManagerHeight.h6),
+
+                      /// Subtitle text
+                      Text(
+                        ManagerStrings.otpSubTitle,
+                        style: getRegularTextStyle(
+                          fontSize: ManagerFontSize.s12,
+                          color: ManagerColors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: ManagerHeight.h4),
+
+                      /// Display user phone
+                      Text(
+                        widget.phone,
+                        style: getBoldTextStyle(
+                          fontSize: ManagerFontSize.s13,
+                          color: ManagerColors.white,
+                        ),
+                      ),
+                      SizedBox(height: ManagerHeight.h24),
+
+                      /// White container for OTP input and button
+                      Container(
+                        decoration: BoxDecoration(
+                          color: ManagerColors.white,
+                          borderRadius:
+                          BorderRadius.circular(ManagerRadius.r8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: ManagerColors.black.withOpacity(0.08),
+                              offset: const Offset(0, 2),
+                              blurRadius: 20,
+                            ),
+                          ],
+                        ),
                         padding: EdgeInsets.symmetric(
-                          horizontal: ManagerWidth.w10,
-                          vertical: ManagerHeight.h10,
+                          vertical: ManagerHeight.h20,
+                          horizontal: ManagerWidth.w12,
                         ),
-                        child: Image.asset(
-                          ManagerImages.iconLockWithOtp,
-                          height: ManagerHeight.h36,
-                          width: ManagerWidth.w36,
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: ManagerHeight.h8),
-
-                    /// Title text
-                    Text(
-                      ManagerStrings.otpTitle,
-                      style: getBoldTextStyle(
-                        fontSize: ManagerFontSize.s16,
-                        color: ManagerColors.white,
-                      ),
-                    ),
-                    SizedBox(height: ManagerHeight.h6),
-
-                    /// Subtitle text
-                    Text(
-                      ManagerStrings.otpSubTitle,
-                      style: getRegularTextStyle(
-                        fontSize: ManagerFontSize.s12,
-                        color: ManagerColors.white,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: ManagerHeight.h4),
-
-                    /// Display user phone
-                    Text(
-                      widget.phone,
-                      style: getBoldTextStyle(
-                        fontSize: ManagerFontSize.s13,
-                        color: ManagerColors.white,
-                      ),
-                    ),
-                    SizedBox(height: ManagerHeight.h24),
-
-                    /// White container for OTP input and button
-                    Container(
-                      decoration: BoxDecoration(
-                        color: ManagerColors.white,
-                        borderRadius:
-                        BorderRadius.circular(ManagerRadius.r8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: ManagerColors.black.withOpacity(0.08),
-                            offset: const Offset(0, 2),
-                            blurRadius: 20,
-                          ),
-                        ],
-                      ),
-                      padding: EdgeInsets.symmetric(
-                        vertical: ManagerHeight.h20,
-                        horizontal: ManagerWidth.w12,
-                      ),
-                      child: Column(
-                        children: [
-                          /// Section title
-                          Text(
-                            ManagerStrings.otpEnterCode,
-                            style: getBoldTextStyle(
-                              fontSize: ManagerFontSize.s16,
-                              color: ManagerColors.primaryColor,
-                            ),
-                          ),
-                          SizedBox(height: ManagerHeight.h16),
-
-                          /// OTP field
-                          Directionality(
-                            textDirection: TextDirection.ltr,
-                            child: Pinput(
-                              length: 6,
-                              controller: otpController,
-                              defaultPinTheme: PinTheme(
-                                width: ManagerWidth.w42,
-                                height: ManagerHeight.h52,
-                                textStyle: getBoldTextStyle(
-                                  fontSize: ManagerFontSize.s18,
-                                  color: ManagerColors.primaryColor,
-                                ),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: ManagerColors.primaryColor,
-                                    width: 1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(
-                                      ManagerRadius.r8),
-                                ),
+                        child: Column(
+                          children: [
+                            /// Section title
+                            Text(
+                              ManagerStrings.otpEnterCode,
+                              style: getBoldTextStyle(
+                                fontSize: ManagerFontSize.s16,
+                                color: ManagerColors.primaryColor,
                               ),
-                              focusedPinTheme: PinTheme(
-                                width: ManagerWidth.w42,
-                                height: ManagerHeight.h52,
-                                textStyle: getBoldTextStyle(
-                                  fontSize: ManagerFontSize.s18,
-                                  color: ManagerColors.primaryColor,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: ManagerColors.primaryColor
-                                      .withOpacity(0.05),
-                                  border: Border.all(
+                            ),
+                            SizedBox(height: ManagerHeight.h16),
+
+                            /// OTP field
+                            Directionality(
+                              textDirection: TextDirection.ltr,
+                              child: Pinput(
+                                length: 6,
+                                controller: otpController,
+                                defaultPinTheme: PinTheme(
+                                  width: ManagerWidth.w42,
+                                  height: ManagerHeight.h52,
+                                  textStyle: getBoldTextStyle(
+                                    fontSize: ManagerFontSize.s18,
                                     color: ManagerColors.primaryColor,
-                                    width: 2,
                                   ),
-                                  borderRadius: BorderRadius.circular(
-                                      ManagerRadius.r8),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: ManagerColors.primaryColor,
+                                      width: 1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(
+                                        ManagerRadius.r8),
+                                  ),
+                                ),
+                                focusedPinTheme: PinTheme(
+                                  width: ManagerWidth.w42,
+                                  height: ManagerHeight.h52,
+                                  textStyle: getBoldTextStyle(
+                                    fontSize: ManagerFontSize.s18,
+                                    color: ManagerColors.primaryColor,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: ManagerColors.primaryColor
+                                        .withOpacity(0.05),
+                                    border: Border.all(
+                                      color: ManagerColors.primaryColor,
+                                      width: 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(
+                                        ManagerRadius.r8),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          SizedBox(height: ManagerHeight.h10),
+                            SizedBox(height: ManagerHeight.h10),
 
-                          /// Timer text
-                          Text(
-                            ManagerStrings.otpTimer,
-                            style: getRegularTextStyle(
-                              fontSize: ManagerFontSize.s12,
-                              color: ManagerColors.greyWithColor,
+                            /// Timer text
+                            Text(
+                              ManagerStrings.otpTimer,
+                              style: getRegularTextStyle(
+                                fontSize: ManagerFontSize.s12,
+                                color: ManagerColors.greyWithColor,
+                              ),
                             ),
-                          ),
-                          SizedBox(height: ManagerHeight.h4),
+                            SizedBox(height: ManagerHeight.h4),
 
-                          /// Resend message
-                          Text(
-                            "${ManagerStrings.otpDidNotReceive} ${ManagerStrings.otpRequestNew}",
-                            style: getRegularTextStyle(
-                              fontSize: ManagerFontSize.s12,
-                              color: ManagerColors.greyWithColor,
+                            /// Resend message
+                            Text(
+                              "${ManagerStrings.otpDidNotReceive} ${ManagerStrings.otpRequestNew}",
+                              style: getRegularTextStyle(
+                                fontSize: ManagerFontSize.s12,
+                                color: ManagerColors.greyWithColor,
+                              ),
                             ),
-                          ),
-                          SizedBox(height: ManagerHeight.h16),
+                            SizedBox(height: ManagerHeight.h16),
 
-                          /// Verify button
-                          ButtonApp(
-                            title: ManagerStrings.otpVerify,
-                            paddingWidth: 0,
-                            onPressed: () {
-                              controller.verifyOtp(
-                                widget.phone,
-                                otpController.text.trim(),
-                                widget.name,
-                              );
-                            },
-                          ),
-                        ],
+                            /// Verify button
+                            ButtonApp(
+                              title: ManagerStrings.otpVerify,
+                              paddingWidth: 0,
+                              onPressed: () {
+                                controller.verifyOtp(
+                                  widget.phone,
+                                  otpController.text.trim(),
+                                  widget.name,
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
 
-          /// Loading overlay when verifying
+          /// ✅ Dynamic loading overlay (covers entire screen when isLoading = true)
           Obx(() {
             if (controller.isLoading.value) {
-              return Container(
-                color: Colors.black.withOpacity(0.35),
-                child: const Center(
-                  child: LoadingWidget(),
+              return AnimatedOpacity(
+                opacity: 1,
+                duration: const Duration(milliseconds: 200),
+                child: Container(
+                  width: double.infinity,
+                  height: double.infinity,
+                  color: Colors.black.withOpacity(0.4),
+                  child: const Center(child: LoadingWidget()),
                 ),
               );
             } else {

@@ -80,143 +80,145 @@ class _LoginScreenState extends State<LoginScreen>
               position: _slideAnimation,
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: ManagerWidth.w16),
-                child: Column(
-                  children: [
-                    SizedBox(height: ManagerHeight.h97),
-
-                    /// Logo
-                    Image.asset(
-                      ManagerImages.logo,
-                      height: ManagerHeight.h69,
-                      width: ManagerWidth.w128,
-                    ),
-                    SizedBox(height: ManagerHeight.h12),
-
-                    /// Title text
-                    Text(
-                      ManagerStrings.loginTitleScreen,
-                      style: getBoldTextStyle(
-                        fontSize: ManagerFontSize.s18,
-                        color: ManagerColors.white,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      SizedBox(height: ManagerHeight.h97),
+                  
+                      /// Logo
+                      Image.asset(
+                        ManagerImages.logo,
+                        height: ManagerHeight.h69,
+                        width: ManagerWidth.w128,
                       ),
-                    ),
-                    SizedBox(height: ManagerHeight.h6),
-
-                    /// Subtitle text
-                    Text(
-                      ManagerStrings.loginSubTitleScreen,
-                      style: getRegularTextStyle(
-                        fontSize: ManagerFontSize.s12,
-                        color: ManagerColors.white,
+                      SizedBox(height: ManagerHeight.h12),
+                  
+                      /// Title text
+                      Text(
+                        ManagerStrings.loginTitleScreen,
+                        style: getBoldTextStyle(
+                          fontSize: ManagerFontSize.s18,
+                          color: ManagerColors.white,
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: ManagerHeight.h24),
-
-                    /// White container for login fields
-                    Container(
-                      decoration: BoxDecoration(
-                        color: ManagerColors.white,
-                        borderRadius: BorderRadius.circular(ManagerRadius.r8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: ManagerColors.black.withOpacity(0.08),
-                            offset: const Offset(0, 2),
-                            blurRadius: 20,
-                          )
-                        ],
+                      SizedBox(height: ManagerHeight.h6),
+                  
+                      /// Subtitle text
+                      Text(
+                        ManagerStrings.loginSubTitleScreen,
+                        style: getRegularTextStyle(
+                          fontSize: ManagerFontSize.s12,
+                          color: ManagerColors.white,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      padding: EdgeInsets.symmetric(
-                        vertical: ManagerHeight.h20,
-                        horizontal: ManagerWidth.w12,
-                      ),
-                      child: Column(
-                        children: [
-                          /// Section title
-                          Text(
-                            ManagerStrings.enterDataLogin,
-                            style: getBoldTextStyle(
-                              fontSize: ManagerFontSize.s16,
-                              color: ManagerColors.primaryColor,
-                            ),
-                          ),
-                          SizedBox(height: ManagerHeight.h16),
-
-                          /// Full name input
-                          CustomAnimatedTextField(
-                            label: ManagerStrings.enterDataLogin1,
-                            controller: nameController,
-                          ),
-                          SizedBox(height: ManagerHeight.h12),
-
-                          /// Phone number input
-                          CustomAnimatedTextField(
-                            label: ManagerStrings.enterDataLogin2,
-                            controller: phoneController,
-                            keyboardType: TextInputType.phone,
-                            isPhoneNumber: true,
-                          ),
-                          SizedBox(height: ManagerHeight.h6),
-
-                          /// Phone note
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: Text(
-                              ManagerStrings.enterDataLogin3,
-                              style: getRegularTextStyle(
-                                fontSize: ManagerFontSize.s12,
+                      SizedBox(height: ManagerHeight.h24),
+                  
+                      /// White container for login fields
+                      Container(
+                        decoration: BoxDecoration(
+                          color: ManagerColors.white,
+                          borderRadius: BorderRadius.circular(ManagerRadius.r8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: ManagerColors.black.withOpacity(0.08),
+                              offset: const Offset(0, 2),
+                              blurRadius: 20,
+                            )
+                          ],
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          vertical: ManagerHeight.h20,
+                          horizontal: ManagerWidth.w12,
+                        ),
+                        child: Column(
+                          children: [
+                            /// Section title
+                            Text(
+                              ManagerStrings.enterDataLogin,
+                              style: getBoldTextStyle(
+                                fontSize: ManagerFontSize.s16,
                                 color: ManagerColors.primaryColor,
                               ),
                             ),
-                          ),
-                          SizedBox(height: ManagerHeight.h16),
-
-                          /// Login button
-                          ButtonApp(
-                            title: ManagerStrings.enterDataLogin4,
-                            paddingWidth: 0,
-                            onPressed: () async {
-                              await controller.sendOtp(
-                                nameController.text.trim(),
-                                phoneController.text.trim(),
-                              );
-
-                              if (controller.isOtpSent.value) {
-                                Get.to(() => OtpScreen(
-                                  phone: phoneController.text.trim(),
-                                  name: nameController.text.trim(),
-                                ));
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    SizedBox(height: ManagerHeight.h16),
-
-                    /// Privacy text
-                    Text.rich(
-                      TextSpan(
-                        text: ManagerStrings.hintPrivacyLogin1,
-                        style: getRegularTextStyle(
-                          fontSize: ManagerFontSize.s12,
-                          color: ManagerColors.black,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: ManagerStrings.hintPrivacyLogin2,
-                            style: getBoldTextStyle(
-                              fontSize: ManagerFontSize.s12,
-                              color: ManagerColors.primaryColor,
-                              decoration: TextDecoration.underline,
+                            SizedBox(height: ManagerHeight.h16),
+                  
+                            /// Full name input
+                            CustomAnimatedTextField(
+                              label: ManagerStrings.enterDataLogin1,
+                              controller: nameController,
                             ),
-                          ),
-                        ],
+                            SizedBox(height: ManagerHeight.h12),
+                  
+                            /// Phone number input
+                            CustomAnimatedTextField(
+                              label: ManagerStrings.enterDataLogin2,
+                              controller: phoneController,
+                              keyboardType: TextInputType.phone,
+                              isPhoneNumber: true,
+                            ),
+                            SizedBox(height: ManagerHeight.h6),
+                  
+                            /// Phone note
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                ManagerStrings.enterDataLogin3,
+                                style: getRegularTextStyle(
+                                  fontSize: ManagerFontSize.s12,
+                                  color: ManagerColors.primaryColor,
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: ManagerHeight.h16),
+                  
+                            /// Login button
+                            ButtonApp(
+                              title: ManagerStrings.enterDataLogin4,
+                              paddingWidth: 0,
+                              onPressed: () async {
+                                await controller.sendOtp(
+                                  nameController.text.trim(),
+                                  phoneController.text.trim(),
+                                );
+                  
+                                if (controller.isOtpSent.value) {
+                                  Get.to(() => OtpScreen(
+                                    phone: phoneController.text.trim(),
+                                    name: nameController.text.trim(),
+                                  ));
+                                }
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                  
+                      SizedBox(height: ManagerHeight.h16),
+                  
+                      /// Privacy text
+                      Text.rich(
+                        TextSpan(
+                          text: ManagerStrings.hintPrivacyLogin1,
+                          style: getRegularTextStyle(
+                            fontSize: ManagerFontSize.s12,
+                            color: ManagerColors.black,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: ManagerStrings.hintPrivacyLogin2,
+                              style: getBoldTextStyle(
+                                fontSize: ManagerFontSize.s12,
+                                color: ManagerColors.primaryColor,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

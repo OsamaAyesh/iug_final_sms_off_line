@@ -32,6 +32,23 @@ class ManagerStrings {
   static String get successPrivacyLink => "تصفح سياسات الاستخدام والخصوصية";
   static String get successWarning => "القسم قيد التطوير";
 
+  // OnBoarding Screen Strings
+  static String get onBoardingTitle1 => "ابدأ تواصلك المؤسسي الذكي!";
+  static String get onBoardingDescription1 =>
+      "أنشئ قنوات اتصال فعّالة بين الدكاترة والطلبة، وابقَ على اطلاع دائم بكل الإعلانات والرسائل من مؤسستك الأكاديمية.";
+
+  static String get onBoardingTitle2 => "تواصل حتى دون إنترنت!";
+  static String get onBoardingDescription2 =>
+      "أرسل الرسائل والملاحظات عبر الإنترنت أو SMS لضمان وصولها لجميع الأعضاء في كل الظروف.";
+
+  static String get onBoardingTitle3 => "إدارة ذكية للمجموعات والمحادثات!";
+  static String get onBoardingDescription3 =>
+      "تحكّم في المجموعات والمحادثات من مكان واحد، وشارك المرفقات والصور والملاحظات بسهولة تامة.";
+
+  static String get onBoardingNextButton => "التالي";
+  static String get onBoardingLoginButton => "تسجيل الدخول";
+  static String get onBoardingSkipButton => "تخطي";
+
 
   /// Config Strings
   static String get noRouteFound => tr('noRouteFound');

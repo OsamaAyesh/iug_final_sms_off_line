@@ -72,6 +72,7 @@ dependencies:
   flutter_ringtone_player: ^4.0.0+4
   flutter_launcher_icons: ^0.14.4
 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
