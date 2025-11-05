@@ -15,6 +15,7 @@ import '../../core/network/dio_factory.dart';
 import '../../core/storage/local/app_settings_prefs.dart';
 import '../../features/auth/domain/di/auth_di.dart';
 import '../../features/auth/presentation/controller/auth_controller.dart';
+import '../../features/home/add_chat/domain/di/contacts_di.dart';
 import '../../firebase_options.dart';
 
 final instance = GetIt.instance;
@@ -68,4 +69,6 @@ initModule() async {
 
   // 🟦 Auth Controller Injection
   Get.lazyPut<AuthController>(() => AuthController(), fenix: true);
+
+  ContactsDI.init();
 }
