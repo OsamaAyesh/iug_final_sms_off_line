@@ -1,13 +1,13 @@
+// المسار: lib/features/home/group_chat/data/response/message_response.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:json_annotation/json_annotation.dart';
 
-part 'message_response.g.dart';
-
-@JsonSerializable()
 class MessageResponse {
   final String? id;
   final String? senderId;
   final String? content;
+  final List<String>? mentions;
+  final String? replyTo;
   final Map<String, dynamic>? status;
   final bool? isGroup;
   final DateTime? timestamp;
@@ -16,6 +16,8 @@ class MessageResponse {
     this.id,
     this.senderId,
     this.content,
+    this.mentions,
+    this.replyTo,
     this.status,
     this.isGroup,
     this.timestamp,
@@ -26,8 +28,12 @@ class MessageResponse {
       id: id,
       senderId: json['senderId'] as String?,
       content: json['content'] as String?,
+      mentions: (json['mentions'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList() ?? [],
+      replyTo: json['replyTo'] as String?,
       status: Map<String, dynamic>.from(json['status'] ?? {}),
-      isGroup: json['isGroup'] as bool? ?? false,
+      isGroup: json['isGroup'] as bool? ?? true,
       timestamp: (json['timestamp'] as Timestamp?)?.toDate(),
     );
   }
@@ -36,8 +42,10 @@ class MessageResponse {
     'id': id,
     'senderId': senderId,
     'content': content,
+    'mentions': mentions,
+    'replyTo': replyTo,
     'status': status,
     'isGroup': isGroup,
-    'timestamp': timestamp,
+    'timestamp': timestamp != null ? Timestamp.fromDate(timestamp!) : null,
   };
 }

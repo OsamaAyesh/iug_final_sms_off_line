@@ -1,30 +1,43 @@
+// المسار: lib/features/home/group_chat/domain/di/chat_group_di.dart
+
+import 'package:get/get.dart';
 import '../../data/data_source/chat_group_remote_data_source.dart';
-import '../../data/repository/chat_group_repository.dart';
-import '../../domain/models/message_model.dart';
-import '../../data/request/send_message_request.dart';
+import '../../data/repository/chat_group_repository_impl.dart';
+import '../../presentation/controller/chat_group_controller.dart';
 
-class ChatGroupRepositoryImpl implements ChatGroupRepository {
-  final ChatGroupRemoteDataSource remote;
+class ChatGroupDI {
+  static void init() {
+    // Data Source
+    if (!Get.isRegistered<ChatGroupRemoteDataSource>()) {
+      Get.lazyPut<ChatGroupRemoteDataSource>(
+            () => ChatGroupRemoteDataSource(),
+      );
+    }
 
-  ChatGroupRepositoryImpl(this.remote);
+    // Repository
+    if (!Get.isRegistered<ChatGroupRepositoryImpl>()) {
+      Get.lazyPut<ChatGroupRepositoryImpl>(
+            () => ChatGroupRepositoryImpl(Get.find<ChatGroupRemoteDataSource>()),
+      );
+    }
 
-  @override
-  Stream<List<MessageModel>> getMessages(String groupId) {
-    return remote.getMessages(groupId);
+    // Controller
+    if (!Get.isRegistered<ChatGroupController>()) {
+      Get.put<ChatGroupController>(
+        ChatGroupController(repository: Get.find<ChatGroupRepositoryImpl>()),
+      );
+    }
   }
 
-  @override
-  Future<void> sendMessage(SendMessageRequest request) {
-    return remote.sendMessage(request);
-  }
-
-  @override
-  Future<void> updateMessageStatus(String groupId, String messageId, Map<String, dynamic> status) {
-    return remote.updateMessageStatus(groupId, messageId, status);
-  }
-
-  @override
-  Future<void> sendSmsToUsers(List<String> numbers, String text) {
-    return remote.sendSmsToUsers(numbers, text);
+  static void dispose() {
+    if (Get.isRegistered<ChatGroupController>()) {
+      Get.delete<ChatGroupController>();
+    }
+    if (Get.isRegistered<ChatGroupRepositoryImpl>()) {
+      Get.delete<ChatGroupRepositoryImpl>();
+    }
+    if (Get.isRegistered<ChatGroupRemoteDataSource>()) {
+      Get.delete<ChatGroupRemoteDataSource>();
+    }
   }
 }

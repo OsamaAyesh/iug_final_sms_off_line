@@ -1,3 +1,7 @@
+// المسار: lib/features/home/group_chat/data/request/send_message_request.dart
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class SendMessageRequest {
   final String groupId;
   final String senderId;
@@ -10,7 +14,7 @@ class SendMessageRequest {
     required this.groupId,
     required this.senderId,
     required this.content,
-    required this.mentions,
+    this.mentions = const [],
     this.replyTo,
     required this.timestamp,
   });
@@ -20,7 +24,8 @@ class SendMessageRequest {
     'content': content,
     'mentions': mentions,
     'replyTo': replyTo,
-    'timestamp': timestamp,
-    'status': {},
+    'timestamp': Timestamp.fromDate(timestamp),
+    'status': {}, // سيتم تعبئتها من قبل الخادم
+    'isGroup': true,
   };
 }
