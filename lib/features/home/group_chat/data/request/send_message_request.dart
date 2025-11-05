@@ -1,5 +1,3 @@
-// المسار: lib/features/home/group_chat/data/request/send_message_request.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SendMessageRequest {
@@ -20,6 +18,7 @@ class SendMessageRequest {
   });
 
   Map<String, dynamic> toJson() => {
+    'groupId': groupId,
     'senderId': senderId,
     'content': content,
     'mentions': mentions,
@@ -27,5 +26,7 @@ class SendMessageRequest {
     'timestamp': Timestamp.fromDate(timestamp),
     'status': {}, // سيتم تعبئتها من قبل الخادم
     'isGroup': true,
+    'reactions': {},
+    'isEdited': false,
   };
 }

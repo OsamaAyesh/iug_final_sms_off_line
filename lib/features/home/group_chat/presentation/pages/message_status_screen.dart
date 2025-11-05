@@ -32,7 +32,7 @@ class MessageStatusScreen extends StatefulWidget {
 class _MessageStatusScreenState extends State<MessageStatusScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final controller = ChatGroupController.to;
+  final controller = Get.find<ChatGroupController>();
 
   @override
   void initState() {

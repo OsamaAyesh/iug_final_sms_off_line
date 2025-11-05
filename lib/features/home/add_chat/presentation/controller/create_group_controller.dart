@@ -150,8 +150,8 @@ class CreateGroupController extends GetxController {
       // Navigate to group chat
       // Get.offAll(() => GroupChatScreen(groupId: groupId, ...));
 
-      Get.back();
-      Get.back();
+      // Get.back();
+      // Get.back();
     } catch (e) {
       Get.snackbar(
         'خطأ',

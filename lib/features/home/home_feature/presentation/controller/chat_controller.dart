@@ -1,14 +1,16 @@
-// المسار: lib/features/home/chat/presentation/controller/chat_controller.dart
+// المسار: lib/features/home/home_feature/presentation/controller/chat_controller.dart
 
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ChatController extends GetxController {
   static ChatController get to => Get.find<ChatController>();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Controllers
   final searchController = TextEditingController();
@@ -22,21 +24,21 @@ class ChatController extends GetxController {
   final filteredChats = <ChatModel>[].obs;
 
   // Current User
-  String currentUserId = '567450057'; // استبدل بـ FirebaseAuth.instance.currentUser!.uid
+  String get currentUserId => _auth.currentUser?.uid ?? '567450057';
   final currentUserImageUrl = Rxn<String>();
+  final currentUserName = Rxn<String>();
 
   // Streams
-  StreamSubscription? _privateChatsSubscription;
   StreamSubscription? _groupChatsSubscription;
   StreamSubscription? _userSubscription;
 
   @override
   void onInit() {
     super.onInit();
+    print('🚀 ChatController initialized - User: $currentUserId');
     _loadCurrentUser();
     _listenToChats();
 
-    // Search listener
     searchController.addListener(() {
       _filterChats(searchController.text);
     });
@@ -45,7 +47,6 @@ class ChatController extends GetxController {
   @override
   void onClose() {
     searchController.dispose();
-    _privateChatsSubscription?.cancel();
     _groupChatsSubscription?.cancel();
     _userSubscription?.cancel();
     super.onClose();
@@ -57,17 +58,22 @@ class ChatController extends GetxController {
 
   Future<void> _loadCurrentUser() async {
     try {
+      print('👤 Loading current user: $currentUserId');
+
       _userSubscription = _firestore
           .collection('users')
           .doc(currentUserId)
           .snapshots()
           .listen((snapshot) {
         if (snapshot.exists) {
-          currentUserImageUrl.value = snapshot.data()?['imageUrl'];
+          final data = snapshot.data();
+          currentUserImageUrl.value = data?['imageUrl'];
+          currentUserName.value = data?['name'];
+          print('✅ User loaded: ${currentUserName.value}');
         }
       });
     } catch (e) {
-      print('Error loading user: $e');
+      print('❌ Error loading user: $e');
     }
   }
 
@@ -77,88 +83,71 @@ class ChatController extends GetxController {
 
   void _listenToChats() {
     isLoading.value = true;
+    print('👂 Listening to chats for user: $currentUserId');
 
-    // Listen to Private Chats
-    _privateChatsSubscription = _firestore
-        .collection('chats')
-        .where('participants', arrayContains: currentUserId)
-        .where('isGroup', isEqualTo: false)
-        .snapshots()
-        .listen((snapshot) {
-      _updatePrivateChats(snapshot.docs);
-    });
-
-    // Listen to Group Chats
+    // Listen to Group Chats with Real-time updates
     _groupChatsSubscription = _firestore
         .collection('groups')
         .where('participants', arrayContains: currentUserId)
         .snapshots()
-        .listen((snapshot) {
-      _updateGroupChats(snapshot.docs);
-    });
-  }
-
-  void _updatePrivateChats(List<QueryDocumentSnapshot> docs) {
-    final privateChats = docs.map((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-
-      // Get other user info
-      final participants = List<String>.from(data['participants'] ?? []);
-      final otherUserId = participants.firstWhere(
-            (id) => id != currentUserId,
-        orElse: () => '',
-      );
-
-      return ChatModel(
-        id: doc.id,
-        name: data['otherUserName'] ?? 'Unknown',
-        imageUrl: data['otherUserImage'] ?? '',
-        lastMessage: data['lastMessage'] ?? '',
-        time: _formatTime(data['lastMessageTime']),
-        isGroup: false,
-        unreadCount: (data['unreadCount'] as Map?)?[currentUserId] ?? 0,
-        lastMessageTime: data['lastMessageTime'],
-        otherUserId: otherUserId,
-      );
-    }).toList();
-
-    // Remove old private chats and add new ones
-    allChats.removeWhere((chat) => !chat.isGroup);
-    allChats.addAll(privateChats);
-
-    // Sort by last message time
-    _sortChats();
-    _applyTabFilter();
-
-    isLoading.value = false;
+        .listen(
+          (snapshot) {
+        print('📥 Received ${snapshot.docs.length} groups');
+        _updateGroupChats(snapshot.docs);
+      },
+      onError: (error) {
+        print('❌ Error listening to groups: $error');
+        isLoading.value = false;
+      },
+    );
   }
 
   void _updateGroupChats(List<QueryDocumentSnapshot> docs) {
-    final groupChats = docs.map((doc) {
-      final data = doc.data() as Map<String, dynamic>;
+    final groupChats = <ChatModel>[];
 
-      return ChatModel(
-        id: doc.id,
-        name: data['name'] ?? 'Unknown Group',
-        imageUrl: data['imageUrl'] ?? '',
-        lastMessage: data['lastMessage'] ?? '',
-        time: _formatTime(data['lastMessageTime']),
-        isGroup: true,
-        membersCount: (data['participants'] as List?)?.length ?? 0,
-        unreadCount: (data['unreadCount'] as Map?)?[currentUserId] ?? 0,
-        lastMessageTime: data['lastMessageTime'],
-      );
-    }).toList();
+    for (var doc in docs) {
+      try {
+        final data = doc.data() as Map<String, dynamic>;
 
-    // Remove old group chats and add new ones
-    allChats.removeWhere((chat) => chat.isGroup);
-    allChats.addAll(groupChats);
+        final chat = ChatModel(
+          id: doc.id,
+          name: data['name'] ?? 'Unknown Group',
+          imageUrl: data['imageUrl'] ?? '',
+          lastMessage: data['lastMessage'] ?? '',
+          time: _formatTime(data['lastMessageTime']),
+          isGroup: true,
+          membersCount: (data['participants'] as List?)?.length ?? 0,
+          unreadCount: _calculateUnreadCount(data['unreadCount']),
+          lastMessageTime: data['lastMessageTime'],
+        );
+
+        groupChats.add(chat);
+      } catch (e) {
+        print('❌ Error parsing group ${doc.id}: $e');
+      }
+    }
+
+    // Update all chats
+    allChats.assignAll(groupChats);
 
     // Sort by last message time
     _sortChats();
     _applyTabFilter();
 
     isLoading.value = false;
+    print('✅ Updated ${groupChats.length} chats');
+  }
+
+  int _calculateUnreadCount(dynamic unreadData) {
+    if (unreadData == null) return 0;
+
+    try {
+      final unreadMap = Map<String, dynamic>.from(unreadData);
+      final count = unreadMap[currentUserId];
+      return count is int ? count : 0;
+    } catch (e) {
+      return 0;
+    }
   }
 
   // ================================
@@ -194,7 +183,6 @@ class ChatController extends GetxController {
         break;
     }
 
-    // Apply search filter
     if (searchController.text.isNotEmpty) {
       _filterChats(searchController.text, filtered);
     } else {
@@ -256,17 +244,21 @@ class ChatController extends GetxController {
     final difference = now.difference(dateTime);
 
     if (difference.inDays == 0) {
-      // اليوم - عرض الوقت
       return '${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
     } else if (difference.inDays == 1) {
-      // أمس
       return 'أمس';
     } else if (difference.inDays < 7) {
-      // خلال الأسبوع - عرض اسم اليوم
-      const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+      const days = [
+        'الأحد',
+        'الاثنين',
+        'الثلاثاء',
+        'الأربعاء',
+        'الخميس',
+        'الجمعة',
+        'السبت'
+      ];
       return days[dateTime.weekday % 7];
     } else {
-      // أكثر من أسبوع - عرض التاريخ
       return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     }
   }
@@ -281,8 +273,9 @@ class ChatController extends GetxController {
       await _firestore.collection(collection).doc(chatId).update({
         'unreadCount.$currentUserId': 0,
       });
+      print('✅ Marked chat $chatId as read');
     } catch (e) {
-      print('Error marking chat as read: $e');
+      print('❌ Error marking chat as read: $e');
     }
   }
 
@@ -293,12 +286,10 @@ class ChatController extends GetxController {
   Future<void> deleteChat(String chatId, bool isGroup) async {
     try {
       if (isGroup) {
-        // Remove user from group
         await _firestore.collection('groups').doc(chatId).update({
           'participants': FieldValue.arrayRemove([currentUserId]),
         });
       } else {
-        // Delete private chat
         await _firestore.collection('chats').doc(chatId).delete();
       }
 
@@ -309,7 +300,10 @@ class ChatController extends GetxController {
         backgroundColor: Colors.green,
         colorText: Colors.white,
       );
+
+      print('✅ Deleted chat $chatId');
     } catch (e) {
+      print('❌ Error deleting chat: $e');
       Get.snackbar(
         'خطأ',
         'فشل حذف المحادثة: $e',
@@ -318,6 +312,15 @@ class ChatController extends GetxController {
         colorText: Colors.white,
       );
     }
+  }
+
+  // ================================
+  // 🔸 Refresh
+  // ================================
+
+  Future<void> refresh() async {
+    print('🔄 Refreshing chats...');
+    // Streams will auto-update, no manual refresh needed
   }
 }
 

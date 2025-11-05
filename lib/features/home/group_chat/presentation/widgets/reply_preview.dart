@@ -1,5 +1,3 @@
-// المسار: lib/features/home/group_chat/presentation/widgets/reply_preview.dart
-
 import 'package:app_mobile/features/home/group_chat/domain/models/message_model.dart';
 import 'package:flutter/material.dart';
 import 'package:app_mobile/core/resources/manager_colors.dart';
@@ -53,7 +51,7 @@ class ReplyPreview extends StatelessWidget {
                     ),
                     SizedBox(width: ManagerWidth.w4),
                     Text(
-                      'الرد على',
+                      'الرد على رسالة',
                       style: getBoldTextStyle(
                         fontSize: ManagerFontSize.s12,
                         color: ManagerColors.primaryColor,

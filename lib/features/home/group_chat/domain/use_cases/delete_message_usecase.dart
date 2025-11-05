@@ -1,20 +1,20 @@
 import '../../data/repository/chat_group_repository.dart';
 
-class UpdateMessageStatusUseCase {
+class DeleteMessageUseCase {
   final ChatGroupRepository repository;
 
-  UpdateMessageStatusUseCase(this.repository);
+  DeleteMessageUseCase(this.repository);
 
   Future<void> call({
     required String groupId,
     required String messageId,
     required String userId,
-    required String status,
+    required bool isAdmin,
   }) =>
-      repository.updateMessageStatus(
+      repository.deleteMessage(
         groupId: groupId,
         messageId: messageId,
         userId: userId,
-        status: status,
+        isAdmin: isAdmin,
       );
 }

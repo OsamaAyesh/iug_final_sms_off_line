@@ -3,12 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:app_mobile/core/resources/manager_colors.dart';
 import 'package:app_mobile/core/resources/manager_font_size.dart';
 import 'package:app_mobile/core/resources/manager_height.dart';
 import 'package:app_mobile/core/resources/manager_styles.dart';
 import 'package:app_mobile/core/resources/manager_width.dart';
+import 'cloudinary_image_avatar.dart';
 import 'create_group_details_screen.dart';
 
 class SelectMembersScreen extends StatefulWidget {
@@ -42,33 +42,34 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final currentUserId = '567450057'; // استبدل بالـ user ID الفعلي
+      final currentUserId = '567450057';
 
-      final contactsSnapshot = await FirebaseFirestore.instance
+      print('📱 جاري تحميل جهات الاتصال...');
+
+      // جلب جميع المستخدمين من Firestore
+      final usersSnapshot = await FirebaseFirestore.instance
           .collection('users')
-          .doc(currentUserId)
-          .collection('contacts')
           .get();
 
       final List<Map<String, dynamic>> contacts = [];
 
-      for (var doc in contactsSnapshot.docs) {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(doc.id)
-            .get();
+      for (var doc in usersSnapshot.docs) {
+        // تخطي المستخدم الحالي
+        if (doc.id == currentUserId) continue;
 
-        if (userDoc.exists) {
-          contacts.add({
-            'id': doc.id,
-            'name': userDoc.data()?['name'] ?? 'غير معروف',
-            'phone': userDoc.data()?['phone'] ?? '',
-            'imageUrl': userDoc.data()?['imageUrl'],
-            'bio': userDoc.data()?['bio'],
-            'isOnline': userDoc.data()?['isOnline'] ?? false,
-          });
-        }
+        final data = doc.data();
+        contacts.add({
+          'id': doc.id,
+          'name': data['name'] ?? 'غير معروف',
+          'phone': data['phone'] ?? '',
+          'phoneCanon': data['phoneCanon'] ?? '',
+          'imageUrl': data['imageUrl'] ?? '',
+          'bio': data['bio'] ?? '',
+          'isOnline': data['isOnline'] ?? false,
+        });
       }
+
+      print('✅ تم تحميل ${contacts.length} جهة اتصال');
 
       setState(() {
         _allContacts = contacts;
@@ -76,6 +77,7 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      print('❌ خطأ في تحميل جهات الاتصال: $e');
       setState(() => _isLoading = false);
       Get.snackbar(
         'خطأ',
@@ -96,7 +98,10 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
         _filteredContacts = _allContacts.where((contact) {
           final name = contact['name'].toString().toLowerCase();
           final phone = contact['phone'].toString().toLowerCase();
-          return name.contains(query) || phone.contains(query);
+          final bio = contact['bio'].toString().toLowerCase();
+          return name.contains(query) ||
+              phone.contains(query) ||
+              bio.contains(query);
         }).toList();
       }
     });
@@ -121,11 +126,12 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
         children: [
           _buildSearchBar(),
           if (_selectedMembers.isNotEmpty) _buildSelectedChips(),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _buildContactsList(),
-          ),
+          if (_isLoading)
+            const Expanded(
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else
+            Expanded(child: _buildContactsList()),
         ],
       ),
       floatingActionButton: _selectedMembers.length >= 2
@@ -142,34 +148,59 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
         icon: const Icon(Icons.arrow_back, color: Colors.white),
         onPressed: () => Get.back(),
       ),
-      title: Text(
-        'إنشاء مجموعة',
-        style: getBoldTextStyle(
-          fontSize: ManagerFontSize.s18,
-          color: Colors.white,
-        ),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'إنشاء مجموعة جديدة',
+            style: getBoldTextStyle(
+              fontSize: ManagerFontSize.s18,
+              color: Colors.white,
+            ),
+          ),
+          Text(
+            'الخطوة 1 من 2',
+            style: getRegularTextStyle(
+              fontSize: ManagerFontSize.s12,
+              color: Colors.white.withOpacity(0.9),
+            ),
+          ),
+        ],
       ),
       actions: [
         if (_selectedMembers.isNotEmpty)
           Center(
-            child: Padding(
-              padding: EdgeInsets.only(left: ManagerWidth.w16),
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: ManagerWidth.w12,
-                  vertical: ManagerHeight.h6,
+            child: Container(
+              margin: EdgeInsets.only(left: ManagerWidth.w16),
+              padding: EdgeInsets.symmetric(
+                horizontal: ManagerWidth.w12,
+                vertical: ManagerHeight.h6,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 1.5,
                 ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'تم اختيار ${_selectedMembers.length}',
-                  style: getBoldTextStyle(
-                    fontSize: ManagerFontSize.s13,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.check_circle,
                     color: Colors.white,
+                    size: 16,
                   ),
-                ),
+                  SizedBox(width: ManagerWidth.w6),
+                  Text(
+                    '${_selectedMembers.length}',
+                    style: getBoldTextStyle(
+                      fontSize: ManagerFontSize.s14,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -190,38 +221,53 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
           ),
         ],
       ),
-      child: TextField(
-        controller: _searchController,
-        textAlign: TextAlign.right,
-        style: getRegularTextStyle(
-          fontSize: ManagerFontSize.s14,
-          color: ManagerColors.black,
-        ),
-        decoration: InputDecoration(
-          hintText: 'بحث عن جهة اتصال...',
-          hintStyle: getRegularTextStyle(
-            fontSize: ManagerFontSize.s14,
-            color: Colors.grey.shade400,
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              textAlign: TextAlign.right,
+              style: getRegularTextStyle(
+                fontSize: ManagerFontSize.s14,
+                color: ManagerColors.black,
+              ),
+              decoration: InputDecoration(
+                hintText: 'بحث عن جهة اتصال...',
+                hintStyle: getRegularTextStyle(
+                  fontSize: ManagerFontSize.s14,
+                  color: Colors.grey.shade400,
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(25),
+                  borderSide: BorderSide.none,
+                ),
+                prefixIcon: Icon(Icons.search, color: Colors.grey.shade400),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: ManagerWidth.w16,
+                  vertical: ManagerHeight.h12,
+                ),
+              ),
+            ),
           ),
-          filled: true,
-          fillColor: Colors.grey.shade50,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide.none,
-          ),
-          prefixIcon: Icon(Icons.search, color: Colors.grey.shade400),
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: ManagerWidth.w16,
-            vertical: ManagerHeight.h12,
-          ),
-        ),
+          if (_searchController.text.isNotEmpty) ...[
+            SizedBox(width: ManagerWidth.w8),
+            IconButton(
+              icon: Icon(Icons.clear, color: Colors.grey.shade600),
+              onPressed: () {
+                _searchController.clear();
+              },
+            ),
+          ],
+        ],
       ),
     );
   }
 
   Widget _buildSelectedChips() {
     return Container(
-      height: 70,
+      height: 80,
       padding: EdgeInsets.symmetric(
         horizontal: ManagerWidth.w16,
         vertical: ManagerHeight.h8,
@@ -229,38 +275,53 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
-          bottom: BorderSide(color: Colors.grey.shade200),
+          bottom: BorderSide(color: Colors.grey.shade200, width: 1),
         ),
       ),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _selectedMembers.length,
-        separatorBuilder: (_, __) => SizedBox(width: ManagerWidth.w8),
-        itemBuilder: (context, index) {
-          final entry = _selectedMembers.entries.elementAt(index);
-          final contact = entry.value;
-          return _buildSelectedChip(entry.key, contact);
-        },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.people,
+                color: ManagerColors.primaryColor,
+                size: 16,
+              ),
+              SizedBox(width: ManagerWidth.w6),
+              Text(
+                'الأعضاء المحددون (${_selectedMembers.length})',
+                style: getBoldTextStyle(
+                  fontSize: ManagerFontSize.s12,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: ManagerHeight.h8),
+          Expanded(
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _selectedMembers.length,
+              separatorBuilder: (_, __) => SizedBox(width: ManagerWidth.w8),
+              itemBuilder: (context, index) {
+                final entry = _selectedMembers.entries.elementAt(index);
+                final contact = entry.value;
+                return _buildSelectedChip(entry.key, contact);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildSelectedChip(String id, Map<String, dynamic> contact) {
     return Chip(
-      avatar: CircleAvatar(
-        backgroundColor: ManagerColors.primaryColor.withOpacity(0.1),
-        backgroundImage: contact['imageUrl'] != null
-            ? CachedNetworkImageProvider(contact['imageUrl'])
-            : null,
-        child: contact['imageUrl'] == null
-            ? Text(
-          contact['name'][0].toUpperCase(),
-          style: getBoldTextStyle(
-            fontSize: ManagerFontSize.s12,
-            color: ManagerColors.primaryColor,
-          ),
-        )
-            : null,
+      avatar: CloudinaryAvatar(
+        imageUrl: contact['imageUrl'] ?? '',
+        fallbackText: contact['name'] ?? 'U',
+        radius: 16,
       ),
       label: Text(
         contact['name'],
@@ -269,9 +330,17 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
           color: ManagerColors.black,
         ),
       ),
-      deleteIcon: const Icon(Icons.close, size: 18),
+      deleteIcon: Container(
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.close, size: 16, color: Colors.red),
+      ),
       onDeleted: () => _toggleMember(id, contact),
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: ManagerColors.primaryColor.withOpacity(0.1),
+      side: BorderSide(color: ManagerColors.primaryColor.withOpacity(0.3)),
     );
   }
 
@@ -296,7 +365,8 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
     return InkWell(
       onTap: () => _toggleMember(contact['id'], contact),
       borderRadius: BorderRadius.circular(12),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.all(ManagerWidth.w12),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -320,21 +390,10 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
           children: [
             Stack(
               children: [
-                CircleAvatar(
+                CloudinaryAvatar(
+                  imageUrl: contact['imageUrl'] ?? '',
+                  fallbackText: contact['name'] ?? 'U',
                   radius: 28,
-                  backgroundColor: ManagerColors.primaryColor.withOpacity(0.1),
-                  backgroundImage: contact['imageUrl'] != null
-                      ? CachedNetworkImageProvider(contact['imageUrl'])
-                      : null,
-                  child: contact['imageUrl'] == null
-                      ? Text(
-                    contact['name'][0].toUpperCase(),
-                    style: getBoldTextStyle(
-                      fontSize: ManagerFontSize.s20,
-                      color: ManagerColors.primaryColor,
-                    ),
-                  )
-                      : null,
                 ),
                 if (contact['isOnline'] == true)
                   Positioned(
@@ -366,7 +425,9 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
                   ),
                   SizedBox(height: ManagerHeight.h4),
                   Text(
-                    contact['bio'] ?? contact['phone'],
+                    contact['bio']?.isNotEmpty == true
+                        ? contact['bio']
+                        : contact['phone'],
                     style: getRegularTextStyle(
                       fontSize: ManagerFontSize.s13,
                       color: Colors.grey.shade600,
@@ -377,7 +438,8 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
                 ],
               ),
             ),
-            Container(
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
               width: 24,
               height: 24,
               decoration: BoxDecoration(
@@ -412,7 +474,9 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.people_outline,
+            _searchController.text.isEmpty
+                ? Icons.people_outline
+                : Icons.search_off,
             size: 100,
             color: Colors.grey.shade300,
           ),
@@ -426,6 +490,16 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
               color: Colors.grey.shade600,
             ),
           ),
+          SizedBox(height: ManagerHeight.h8),
+          Text(
+            _searchController.text.isNotEmpty
+                ? 'حاول البحث بكلمات أخرى'
+                : 'أضف جهات اتصال أولاً',
+            style: getRegularTextStyle(
+              fontSize: ManagerFontSize.s14,
+              color: Colors.grey.shade500,
+            ),
+          ),
         ],
       ),
     );
@@ -434,16 +508,28 @@ class _SelectMembersScreenState extends State<SelectMembersScreen> {
   Widget _buildNextButton() {
     return FloatingActionButton.extended(
       onPressed: () {
+        if (_selectedMembers.length < 2) {
+          Get.snackbar(
+            'تنبيه',
+            'يجب اختيار عضوين على الأقل',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.orange,
+            colorText: Colors.white,
+          );
+          return;
+        }
+
         Get.to(
               () => CreateGroupDetailsScreen(
             selectedMembers: _selectedMembers,
           ),
+          transition: Transition.rightToLeft,
         );
       },
       backgroundColor: ManagerColors.primaryColor,
       icon: const Icon(Icons.arrow_forward, color: Colors.white),
       label: Text(
-        'التالي',
+        'التالي (${_selectedMembers.length})',
         style: getBoldTextStyle(
           fontSize: ManagerFontSize.s15,
           color: Colors.white,

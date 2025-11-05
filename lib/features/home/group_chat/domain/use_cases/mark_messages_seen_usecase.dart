@@ -1,20 +1,16 @@
 import '../../data/repository/chat_group_repository.dart';
 
-class UpdateMessageStatusUseCase {
+class MarkMessagesSeenUseCase {
   final ChatGroupRepository repository;
 
-  UpdateMessageStatusUseCase(this.repository);
+  MarkMessagesSeenUseCase(this.repository);
 
   Future<void> call({
     required String groupId,
-    required String messageId,
     required String userId,
-    required String status,
   }) =>
-      repository.updateMessageStatus(
+      repository.markMessagesAsSeen(
         groupId: groupId,
-        messageId: messageId,
         userId: userId,
-        status: status,
       );
 }

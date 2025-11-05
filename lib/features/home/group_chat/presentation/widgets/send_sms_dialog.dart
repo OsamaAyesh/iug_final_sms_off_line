@@ -21,7 +21,7 @@ class _SendSmsDialogState extends State<SendSmsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = ChatGroupController.to;
+    final controller = Get.find<ChatGroupController>();
 
     return Dialog(
       shape: RoundedRectangleBorder(
@@ -220,7 +220,7 @@ class _SendSmsDialogState extends State<SendSmsDialog> {
       String optionKey,
       ) {
     final isSelected = selectedOption == optionKey;
-    final controller = ChatGroupController.to;
+    final controller = Get.find<ChatGroupController>();
 
     // تحقق من وجود مستخدمين
     int userCount = 0;

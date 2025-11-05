@@ -1,13 +1,14 @@
-// import 'package:telephony/telephony.dart';
-// import '../model/message_model.dart';
+import '../../data/repository/chat_group_repository.dart';
 
 class SendSmsUseCase {
-  // final Telephony telephony = Telephony.instance;
+  final ChatGroupRepository repository;
 
-  Future<void> sendSmsToUsers(
-      List<String> phoneNumbers, String message) async {
-    for (final number in phoneNumbers) {
-      // await telephony.sendSms(to: number, message: message);
-    }
-  }
+  SendSmsUseCase(this.repository);
+
+  Future<Map<String, int>> call(
+      String groupId,
+      List<String> numbers,
+      String text,
+      ) =>
+      repository.sendSmsToUsers(groupId, numbers, text);
 }

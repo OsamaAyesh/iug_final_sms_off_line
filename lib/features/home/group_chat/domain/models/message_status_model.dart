@@ -1,11 +1,11 @@
-// المسار: lib/features/home/group_chat/domain/models/message_status_model.dart
-
 class MessageStatusModel {
   final String userId;
   final String name;
   final String imageUrl;
   final String? phoneNumber;
   String status; // delivered / seen / failed / pending
+  final bool isOnline;
+  final DateTime lastSeen;
 
   MessageStatusModel({
     required this.userId,
@@ -13,6 +13,8 @@ class MessageStatusModel {
     required this.imageUrl,
     this.phoneNumber,
     required this.status,
+    this.isOnline = false,
+    required this.lastSeen,
   });
 
   String get statusText {
@@ -37,6 +39,10 @@ class MessageStatusModel {
       imageUrl: json['imageUrl'] ?? '',
       phoneNumber: json['phoneNumber'],
       status: json['status'] ?? 'pending',
+      isOnline: json['isOnline'] ?? false,
+      lastSeen: json['lastSeen'] != null
+          ? DateTime.parse(json['lastSeen'])
+          : DateTime.now(),
     );
   }
 
@@ -46,5 +52,7 @@ class MessageStatusModel {
     'imageUrl': imageUrl,
     'phoneNumber': phoneNumber,
     'status': status,
+    'isOnline': isOnline,
+    'lastSeen': lastSeen.toIso8601String(),
   };
 }

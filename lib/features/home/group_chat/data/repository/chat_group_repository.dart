@@ -1,11 +1,9 @@
-// المسار: lib/features/home/group_chat/data/repository/chat_group_repository.dart
-
 import 'package:app_mobile/features/home/group_chat/domain/models/message_model.dart';
 import '../request/send_message_request.dart';
 
 abstract class ChatGroupRepository {
   /// Get messages stream for a group
-  Stream<List<MessageModel>> getMessages(String groupId);
+  Stream<List<MessageModel>> getMessages(String groupId, String currentUserId);
 
   /// Send a new message
   Future<void> sendMessage(SendMessageRequest request);
@@ -48,4 +46,26 @@ abstract class ChatGroupRepository {
       List<String> numbers,
       String text,
       );
+
+  /// Toggle message reaction
+  Future<void> toggleMessageReaction({
+    required String groupId,
+    required String messageId,
+    required String userId,
+    required String emoji,
+  });
+
+  /// Delete message with permission check
+  Future<void> deleteMessage({
+    required String groupId,
+    required String messageId,
+    required String userId,
+    required bool isAdmin,
+  });
+
+  /// Get user connection status
+  Stream<Map<String, dynamic>> getUserConnectionStatus(String userId);
+
+  /// Update user connection status
+  Future<void> updateUserConnectionStatus(String userId, bool isOnline);
 }

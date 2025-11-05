@@ -1,25 +1,23 @@
 // المسار: lib/features/home/add_chat/presentation/pages/create_group_details_screen.dart
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:app_mobile/core/resources/manager_colors.dart';
 import 'package:app_mobile/core/resources/manager_font_size.dart';
 import 'package:app_mobile/core/resources/manager_height.dart';
 import 'package:app_mobile/core/resources/manager_styles.dart';
 import 'package:app_mobile/core/resources/manager_width.dart';
-import '../../../../../core/service/cloudinart_service.dart';
+
+import 'cloudinary_image_avatar.dart';
 
 class CreateGroupDetailsScreen extends StatefulWidget {
   final Map<String, Map<String, dynamic>> selectedMembers;
 
   const CreateGroupDetailsScreen({
-    super.key,
+    Key? key,
     required this.selectedMembers,
-  });
+  }) : super(key: key);
 
   @override
   State<CreateGroupDetailsScreen> createState() =>
@@ -27,16 +25,12 @@ class CreateGroupDetailsScreen extends StatefulWidget {
 }
 
 class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _picker = ImagePicker();
+  final _formKey = GlobalKey<FormState>();
+  bool _isCreating = false;
 
-  File? _groupImage;
-  bool _isLoading = false;
-  bool _isUploading = false;
-  bool _onlyAdminsCanSend = false;
-  bool _allowMembersToAdd = false;
+  String get currentUserId => '567450057'; // استبدل بـ FirebaseAuth
 
   @override
   void dispose() {
@@ -53,23 +47,21 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(ManagerWidth.w16),
+          padding: EdgeInsets.all(ManagerWidth.w20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildImageSection(),
-              SizedBox(height: ManagerHeight.h24),
+              _buildHeader(),
+              SizedBox(height: ManagerHeight.h30),
+              _buildGroupImage(),
+              SizedBox(height: ManagerHeight.h30),
               _buildNameField(),
-              SizedBox(height: ManagerHeight.h16),
-              _buildDescriptionField(),
-              SizedBox(height: ManagerHeight.h24),
-              _buildSettingsSection(),
-              SizedBox(height: ManagerHeight.h24),
-              _buildMembersSection(),
-              SizedBox(height: ManagerHeight.h24),
-              if (_isUploading) _buildUploadingIndicator(),
-              _buildCreateButton(),
               SizedBox(height: ManagerHeight.h20),
+              _buildDescriptionField(),
+              SizedBox(height: ManagerHeight.h30),
+              _buildMembersPreview(),
+              SizedBox(height: ManagerHeight.h30),
+              _buildCreateButton(),
             ],
           ),
         ),
@@ -85,79 +77,135 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
         icon: const Icon(Icons.arrow_back, color: Colors.white),
         onPressed: () => Get.back(),
       ),
-      title: Text(
-        'تفاصيل المجموعة',
-        style: getBoldTextStyle(
-          fontSize: ManagerFontSize.s18,
-          color: Colors.white,
-        ),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'إنشاء مجموعة جديدة',
+            style: getBoldTextStyle(
+              fontSize: ManagerFontSize.s18,
+              color: Colors.white,
+            ),
+          ),
+          Text(
+            'الخطوة 2 من 2',
+            style: getRegularTextStyle(
+              fontSize: ManagerFontSize.s12,
+              color: Colors.white.withOpacity(0.9),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildImageSection() {
-    return Center(
-      child: Stack(
+  Widget _buildHeader() {
+    return Container(
+      padding: EdgeInsets.all(ManagerWidth.w16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.blue.shade50,
+            Colors.blue.shade100.withOpacity(0.3),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Row(
         children: [
           Container(
-            width: 120,
-            height: 120,
+            padding: EdgeInsets.all(ManagerWidth.w10),
             decoration: BoxDecoration(
-              color: Colors.grey.shade200,
+              color: Colors.blue.shade100,
               shape: BoxShape.circle,
-              image: _groupImage != null
-                  ? DecorationImage(
-                image: FileImage(_groupImage!),
-                fit: BoxFit.cover,
-              )
-                  : null,
             ),
-            child: _groupImage == null
-                ? Icon(
-              Icons.group,
-              size: 60,
-              color: Colors.grey.shade400,
-            )
-                : null,
+            child: Icon(
+              Icons.info_outline,
+              color: Colors.blue.shade700,
+              size: 24,
+            ),
           ),
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: Row(
+          SizedBox(width: ManagerWidth.w12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_groupImage != null)
-                  InkWell(
-                    onTap: () => setState(() => _groupImage = null),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.delete,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
+                Text(
+                  'معلومات المجموعة',
+                  style: getBoldTextStyle(
+                    fontSize: ManagerFontSize.s14,
+                    color: Colors.blue.shade900,
                   ),
-                const SizedBox(width: 8),
-                InkWell(
-                  onTap: _showImageSourceDialog,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: ManagerColors.primaryColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+                ),
+                SizedBox(height: ManagerHeight.h4),
+                Text(
+                  'أدخل اسم ووصف للمجموعة',
+                  style: getRegularTextStyle(
+                    fontSize: ManagerFontSize.s12,
+                    color: Colors.blue.shade700,
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGroupImage() {
+    return Center(
+      child: Column(
+        children: [
+          Stack(
+            children: [
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: ManagerColors.primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: ManagerColors.primaryColor.withOpacity(0.3),
+                    width: 2,
+                  ),
+                ),
+                child: Icon(
+                  Icons.group,
+                  size: 60,
+                  color: ManagerColors.primaryColor,
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: ManagerColors.primaryColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(Icons.camera_alt, size: 18),
+                    color: Colors.white,
+                    onPressed: () {
+                      Get.snackbar('قريباً', 'اختيار صورة قيد التطوير');
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: ManagerHeight.h12),
+          Text(
+            'إضافة صورة المجموعة',
+            style: getRegularTextStyle(
+              fontSize: ManagerFontSize.s13,
+              color: Colors.grey.shade600,
             ),
           ),
         ],
@@ -172,7 +220,7 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
         Row(
           children: [
             Icon(
-              Icons.group_outlined,
+              Icons.group,
               color: ManagerColors.primaryColor,
               size: 20,
             ),
@@ -197,9 +245,13 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
         TextFormField(
           controller: _nameController,
           textAlign: TextAlign.right,
+          maxLength: 50,
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
               return 'الرجاء إدخال اسم المجموعة';
+            }
+            if (value.trim().length < 3) {
+              return 'الاسم يجب أن يكون 3 أحرف على الأقل';
             }
             return null;
           },
@@ -208,7 +260,7 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
             color: ManagerColors.black,
           ),
           decoration: InputDecoration(
-            hintText: 'أدخل اسم المجموعة',
+            hintText: 'مثال: مجموعة الأصدقاء',
             hintStyle: getRegularTextStyle(
               fontSize: ManagerFontSize.s14,
               color: Colors.grey.shade400,
@@ -234,9 +286,13 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.red),
             ),
+            prefixIcon: Icon(
+              Icons.edit,
+              color: Colors.grey.shade400,
+            ),
             contentPadding: EdgeInsets.symmetric(
               horizontal: ManagerWidth.w16,
-              vertical: ManagerHeight.h14,
+              vertical: ManagerHeight.h16,
             ),
           ),
         ),
@@ -251,13 +307,13 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
         Row(
           children: [
             Icon(
-              Icons.description_outlined,
+              Icons.description,
               color: ManagerColors.primaryColor,
               size: 20,
             ),
             SizedBox(width: ManagerWidth.w8),
             Text(
-              'الوصف (اختياري)',
+              'وصف المجموعة (اختياري)',
               style: getBoldTextStyle(
                 fontSize: ManagerFontSize.s14,
                 color: ManagerColors.black,
@@ -266,16 +322,17 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
           ],
         ),
         SizedBox(height: ManagerHeight.h10),
-        TextField(
+        TextFormField(
           controller: _descriptionController,
           textAlign: TextAlign.right,
           maxLines: 3,
+          maxLength: 200,
           style: getRegularTextStyle(
             fontSize: ManagerFontSize.s14,
             color: ManagerColors.black,
           ),
           decoration: InputDecoration(
-            hintText: 'أدخل وصف المجموعة',
+            hintText: 'أضف وصفاً للمجموعة...',
             hintStyle: getRegularTextStyle(
               fontSize: ManagerFontSize.s14,
               color: Colors.grey.shade400,
@@ -304,19 +361,13 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
     );
   }
 
-  Widget _buildSettingsSection() {
+  Widget _buildMembersPreview() {
     return Container(
       padding: EdgeInsets.all(ManagerWidth.w16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,146 +375,111 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
           Row(
             children: [
               Icon(
-                Icons.settings_outlined,
+                Icons.people,
                 color: ManagerColors.primaryColor,
                 size: 20,
               ),
               SizedBox(width: ManagerWidth.w8),
               Text(
-                'الإعدادات',
+                'الأعضاء (${widget.selectedMembers.length + 1})',
                 style: getBoldTextStyle(
-                  fontSize: ManagerFontSize.s15,
-                  color: ManagerColors.black,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: ManagerHeight.h16),
-          SwitchListTile(
-            value: _onlyAdminsCanSend,
-            onChanged: (value) => setState(() => _onlyAdminsCanSend = value),
-            title: Text(
-              'فقط المشرفون يمكنهم الإرسال',
-              style: getRegularTextStyle(
-                fontSize: ManagerFontSize.s14,
-                color: ManagerColors.black,
-              ),
-            ),
-            activeColor: ManagerColors.primaryColor,
-            contentPadding: EdgeInsets.zero,
-          ),
-          SwitchListTile(
-            value: _allowMembersToAdd,
-            onChanged: (value) => setState(() => _allowMembersToAdd = value),
-            title: Text(
-              'السماح للأعضاء بإضافة أعضاء آخرين',
-              style: getRegularTextStyle(
-                fontSize: ManagerFontSize.s14,
-                color: ManagerColors.black,
-              ),
-            ),
-            activeColor: ManagerColors.primaryColor,
-            contentPadding: EdgeInsets.zero,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMembersSection() {
-    return Container(
-      padding: EdgeInsets.all(ManagerWidth.w16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.people_outline,
-                color: ManagerColors.primaryColor,
-                size: 20,
-              ),
-              SizedBox(width: ManagerWidth.w8),
-              Text(
-                'الأعضاء (${widget.selectedMembers.length})',
-                style: getBoldTextStyle(
-                  fontSize: ManagerFontSize.s15,
+                  fontSize: ManagerFontSize.s14,
                   color: ManagerColors.black,
                 ),
               ),
             ],
           ),
           SizedBox(height: ManagerHeight.h12),
+          const Divider(height: 1),
+          SizedBox(height: ManagerHeight.h12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: widget.selectedMembers.values.map((member) {
-              return Chip(
-                avatar: CircleAvatar(
-                  backgroundColor: ManagerColors.primaryColor.withOpacity(0.1),
-                  backgroundImage: member['imageUrl'] != null
-                      ? CachedNetworkImageProvider(member['imageUrl'])
-                      : null,
-                  child: member['imageUrl'] == null
-                      ? Text(
-                    member['name'][0].toUpperCase(),
-                    style: getBoldTextStyle(
-                      fontSize: ManagerFontSize.s12,
-                      color: ManagerColors.primaryColor,
-                    ),
-                  )
-                      : null,
-                ),
-                label: Text(
-                  member['name'],
-                  style: getRegularTextStyle(
-                    fontSize: ManagerFontSize.s13,
-                    color: ManagerColors.black,
-                  ),
-                ),
-                backgroundColor: Colors.grey.shade100,
-              );
-            }).toList(),
+            children: [
+              // أنت (المنشئ)
+              _buildMemberChip('أنت', '', isCreator: true),
+              // الأعضاء المحددين
+              ...widget.selectedMembers.values
+                  .map((member) => _buildMemberChip(
+                member['name'],
+                member['imageUrl'] ?? '',
+              ))
+                  .toList(),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildUploadingIndicator() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
+  Widget _buildMemberChip(String name, String imageUrl, {bool isCreator = false}) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: ManagerWidth.w10,
+        vertical: ManagerHeight.h6,
+      ),
+      decoration: BoxDecoration(
+        color: isCreator
+            ? ManagerColors.primaryColor.withOpacity(0.1)
+            : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isCreator
+              ? ManagerColors.primaryColor.withOpacity(0.3)
+              : Colors.grey.shade300,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (imageUrl.isNotEmpty)
+            CloudinaryAvatar(
+              imageUrl: imageUrl,
+              fallbackText: name,
+              radius: 12,
+            )
+          else
+            CircleAvatar(
+              radius: 12,
+              backgroundColor: isCreator
+                  ? ManagerColors.primaryColor
+                  : Colors.grey.shade300,
+              child: Icon(
+                isCreator ? Icons.star : Icons.person,
+                size: 14,
+                color: Colors.white,
+              ),
             ),
-            SizedBox(width: ManagerWidth.w12),
-            Text(
-              'جاري رفع الصورة إلى Cloudinary...',
-              style: getRegularTextStyle(
-                fontSize: ManagerFontSize.s13,
-                color: Colors.grey.shade600,
+          SizedBox(width: ManagerWidth.w6),
+          Text(
+            name,
+            style: getRegularTextStyle(
+              fontSize: ManagerFontSize.s13,
+              color: isCreator ? ManagerColors.primaryColor : ManagerColors.black,
+            ),
+          ),
+          if (isCreator) ...[
+            SizedBox(width: ManagerWidth.w4),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: ManagerWidth.w6,
+                vertical: ManagerHeight.h2,
+              ),
+              decoration: BoxDecoration(
+                color: ManagerColors.primaryColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'منشئ',
+                style: getRegularTextStyle(
+                  fontSize: ManagerFontSize.s10,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
-        ),
-        SizedBox(height: ManagerHeight.h16),
-      ],
+        ],
+      ),
     );
   }
 
@@ -471,7 +487,7 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleCreateGroup,
+        onPressed: _isCreating ? null : _createGroup,
         style: ElevatedButton.styleFrom(
           backgroundColor: ManagerColors.primaryColor,
           disabledBackgroundColor: Colors.grey.shade300,
@@ -481,7 +497,7 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
           padding: EdgeInsets.symmetric(vertical: ManagerHeight.h16),
           elevation: 4,
         ),
-        child: _isLoading
+        child: _isCreating
             ? Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -506,7 +522,7 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
             : Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.group_add, color: Colors.white),
+            const Icon(Icons.check_circle, color: Colors.white),
             SizedBox(width: ManagerWidth.w10),
             Text(
               'إنشاء المجموعة',
@@ -521,107 +537,52 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
     );
   }
 
-  void _showImageSourceDialog() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('الكاميرا'),
-              onTap: () {
-                Get.back();
-                _pickImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('المعرض'),
-              onTap: () {
-                Get.back();
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final XFile? image = await _picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-
-      if (image != null) {
-        setState(() => _groupImage = File(image.path));
-      }
-    } catch (e) {
-      Get.snackbar(
-        'خطأ',
-        'فشل اختيار الصورة: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    }
-  }
-
-  Future<void> _handleCreateGroup() async {
+  Future<void> _createGroup() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() => _isCreating = true);
 
     try {
-      final currentUserId = '567450057'; // استبدل بالـ user ID الفعلي
       final groupName = _nameController.text.trim();
       final description = _descriptionController.text.trim();
 
-      // Create group document
-      final groupRef = FirebaseFirestore.instance.collection('groups').doc();
-      final groupId = groupRef.id;
-
-      String? imageUrl;
-
-      // رفع الصورة إلى Cloudinary إذا كانت موجودة
-      if (_groupImage != null) {
-        setState(() => _isUploading = true);
-
-        imageUrl = await CloudinaryService.upload(
-          file: _groupImage!,
-          type: 'image',
-          folder: 'chat_media/groups/$groupId',
-        );
-
-        setState(() => _isUploading = false);
-      }
-
-      // Prepare participants list
+      // قائمة الأعضاء (المستخدم الحالي + المحددين)
       final participants = [currentUserId, ...widget.selectedMembers.keys];
 
-      // Create group in Firestore
-      await groupRef.set({
+      // بيانات المجموعة
+      final groupData = {
         'name': groupName,
         'description': description,
-        'imageUrl': imageUrl, // رابط Cloudinary
+        'imageUrl': '', // TODO: Add image upload
         'createdBy': currentUserId,
-        'admins': [currentUserId],
-        'participants': participants,
         'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'settings': {
-          'onlyAdminsCanSend': _onlyAdminsCanSend,
-          'onlyAdminsCanEdit': true,
-          'allowMembersToAddOthers': _allowMembersToAdd,
-          'showMembersList': true,
-        },
+        'participants': participants,
+        'admins': [currentUserId], // المنشئ هو المشرف الأول
+        'lastMessage': 'تم إنشاء المجموعة',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastMessageSender': currentUserId,
+        'messageCount': 0,
+        'unreadCount': {}, // سيتم تحديثه عند إرسال الرسائل
+      };
+
+      // إنشاء المجموعة
+      final groupRef =
+      await FirebaseFirestore.instance.collection('groups').add(groupData);
+
+      print('✅ تم إنشاء المجموعة: ${groupRef.id}');
+
+      // رسالة ترحيب
+      await groupRef.collection('messages').add({
+        'text': 'مرحباً بالجميع في $groupName! 🎉',
+        'senderId': currentUserId,
+        'senderName': 'النظام',
+        'senderImage': '',
+        'timestamp': FieldValue.serverTimestamp(),
+        'status': 'sent',
+        'mentions': [],
+        'type': 'system',
       });
 
       Get.snackbar(
@@ -631,11 +592,13 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
         backgroundColor: Colors.green,
         colorText: Colors.white,
         icon: const Icon(Icons.check_circle, color: Colors.white),
+        duration: const Duration(seconds: 2),
       );
 
-      // Navigate back to home
+      // العودة للصفحة الرئيسية
       Get.until((route) => route.isFirst);
     } catch (e) {
+      print('❌ خطأ في إنشاء المجموعة: $e');
       Get.snackbar(
         'خطأ',
         'فشل إنشاء المجموعة: $e',
@@ -646,10 +609,7 @@ class _CreateGroupDetailsScreenState extends State<CreateGroupDetailsScreen> {
       );
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _isUploading = false;
-        });
+        setState(() => _isCreating = false);
       }
     }
   }

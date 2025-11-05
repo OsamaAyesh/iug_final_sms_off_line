@@ -1,9 +1,8 @@
-// المسار: lib/features/home/chat/presentation/pages/home_screen.dart
+// المسار: lib/features/home/home_feature/presentation/pages/home_screen.dart
 
 import 'package:app_mobile/core/widgets/loading_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../../../core/resources/manager_colors.dart';
 import '../../../../../core/resources/manager_font_size.dart';
@@ -12,6 +11,7 @@ import '../../../../../core/resources/manager_styles.dart';
 import '../../../../../core/resources/manager_width.dart';
 import '../../../../../core/util/empty_state_widget.dart';
 import '../../../add_chat/presentation/pages/add_chat_screen.dart';
+import '../../../add_chat/presentation/pages/cloudinary_image_avatar.dart';
 import '../../../add_chat/presentation/pages/select_members_screen.dart';
 import '../../../group_chat/presentation/pages/group_chat_screen.dart';
 import '../controller/chat_controller.dart';
@@ -65,10 +65,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ================================
-  // 🔸 FAB with Menu
-  // ================================
-
   Widget _buildFAB() {
     return FloatingActionButton(
       backgroundColor: ManagerColors.primaryColor,
@@ -92,7 +88,6 @@ class _HomeScreenState extends State<HomeScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle bar
             Container(
               width: 40,
               height: 4,
@@ -102,8 +97,6 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
             SizedBox(height: ManagerHeight.h20),
-
-            // Title
             Text(
               'إضافة جديد',
               style: getBoldTextStyle(
@@ -112,8 +105,6 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
             SizedBox(height: ManagerHeight.h20),
-
-            // Add Contact
             _buildMenuItem(
               icon: Icons.person_add,
               iconColor: Colors.blue,
@@ -124,10 +115,7 @@ class _HomeScreenState extends State<HomeScreen>
                 Get.to(() => const AddChatScreen());
               },
             ),
-
             const Divider(height: 1),
-
-            // Create Group
             _buildMenuItem(
               icon: Icons.group_add,
               iconColor: Colors.green,
@@ -138,7 +126,6 @@ class _HomeScreenState extends State<HomeScreen>
                 Get.to(() => const SelectMembersScreen());
               },
             ),
-
             SizedBox(height: ManagerHeight.h10),
           ],
         ),
@@ -179,10 +166,6 @@ class _HomeScreenState extends State<HomeScreen>
       onTap: onTap,
     );
   }
-
-  // ================================
-  // 🔸 Header
-  // ================================
 
   Widget _buildHeader() {
     return Container(
@@ -236,7 +219,8 @@ class _HomeScreenState extends State<HomeScreen>
                       children: [
                         Icon(Icons.logout, color: Colors.red),
                         SizedBox(width: 12),
-                        Text('تسجيل الخروج', style: TextStyle(color: Colors.red)),
+                        Text('تسجيل الخروج',
+                            style: TextStyle(color: Colors.red)),
                       ],
                     ),
                   ),
@@ -263,11 +247,11 @@ class _HomeScreenState extends State<HomeScreen>
         );
       }
 
-      // return CloudinaryAvatar(
-      //   imageUrl: imageUrl,
-      //   fallbackText: 'User',
-      //   radius: 20,
-      // );
+      return CloudinaryAvatar(
+        imageUrl: imageUrl,
+        fallbackText: 'User',
+        radius: 20,
+      );
     });
   }
 
@@ -310,10 +294,8 @@ class _HomeScreenState extends State<HomeScreen>
   void _handleMenuAction(String value) {
     switch (value) {
       case 'settings':
-      // Navigate to settings
         break;
       case 'profile':
-      // Navigate to profile
         break;
       case 'logout':
         _showLogoutDialog();
@@ -333,7 +315,6 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           TextButton(
             onPressed: () {
-              // Handle logout
               Get.back();
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -343,10 +324,6 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
   }
-
-  // ================================
-  // 🔸 Chat List
-  // ================================
 
   Widget _buildChatList() {
     return Obx(() {
@@ -421,32 +398,28 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
       ),
-    ) ?? false;
+    ) ??
+        false;
   }
-
-  // ================================
-  // 🔸 Chat Tiles
-  // ================================
 
   Widget _buildPrivateTile(chat) {
     return ListTile(
       onTap: () {
         controller.markChatAsRead(chat.id, false);
-        Get.to(() => PrivateChatScreen(
-          chatId: chat.id,
-          otherUserId: chat.otherUserId ?? '',
-          otherUserName: chat.name,
-          otherUserImage: chat.imageUrl,
-        ));
+        Get.snackbar('قريباً', 'المحادثات الخاصة قيد التطوير');
       },
       contentPadding: EdgeInsets.symmetric(
         horizontal: ManagerWidth.w16,
         vertical: ManagerHeight.h8,
       ),
-      leading: CloudinaryAvatar(
-        imageUrl: chat.imageUrl,
-        fallbackText: chat.name,
-        radius: 24,
+      leading: SizedBox(
+        width: 48,
+        height: 48,
+        child: CloudinaryAvatar(
+          imageUrl: chat.imageUrl,
+          fallbackText: chat.name,
+          radius: 24,
+        ),
       ),
       title: Row(
         children: [
@@ -457,9 +430,12 @@ class _HomeScreenState extends State<HomeScreen>
                 fontSize: ManagerFontSize.s14,
                 color: ManagerColors.black,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (chat.unreadCount > 0)
+          if (chat.unreadCount > 0) ...[
+            SizedBox(width: ManagerWidth.w8),
             Container(
               padding: EdgeInsets.symmetric(
                 horizontal: ManagerWidth.w8,
@@ -477,6 +453,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
             ),
+          ],
         ],
       ),
       subtitle: Text(
@@ -513,30 +490,34 @@ class _HomeScreenState extends State<HomeScreen>
         horizontal: ManagerWidth.w16,
         vertical: ManagerHeight.h8,
       ),
-      leading: Stack(
-        children: [
-          CloudinaryAvatar(
-            imageUrl: chat.imageUrl,
-            fallbackText: chat.name,
-            radius: 24,
-          ),
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.group,
-                size: 14,
-                color: ManagerColors.primaryColor,
+      leading: SizedBox(
+        width: 48,
+        height: 48,
+        child: Stack(
+          children: [
+            CloudinaryAvatar(
+              imageUrl: chat.imageUrl,
+              fallbackText: chat.name,
+              radius: 24,
+            ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.group,
+                  size: 14,
+                  color: ManagerColors.primaryColor,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       title: Row(
         children: [
@@ -547,9 +528,12 @@ class _HomeScreenState extends State<HomeScreen>
                 fontSize: ManagerFontSize.s14,
                 color: ManagerColors.black,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (chat.unreadCount > 0)
+          if (chat.unreadCount > 0) ...[
+            SizedBox(width: ManagerWidth.w8),
             Container(
               padding: EdgeInsets.symmetric(
                 horizontal: ManagerWidth.w8,
@@ -567,6 +551,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
             ),
+          ],
         ],
       ),
       subtitle: Text(
@@ -578,26 +563,29 @@ class _HomeScreenState extends State<HomeScreen>
           color: Colors.grey,
         ),
       ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            chat.time,
-            style: getRegularTextStyle(
-              fontSize: ManagerFontSize.s10,
-              color: Colors.grey,
+      trailing: SizedBox(
+        width: 80,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              chat.time,
+              style: getRegularTextStyle(
+                fontSize: ManagerFontSize.s10,
+                color: Colors.grey,
+              ),
             ),
-          ),
-          SizedBox(height: ManagerHeight.h4),
-          Text(
-            "${chat.membersCount} مشاركين",
-            style: getRegularTextStyle(
-              fontSize: ManagerFontSize.s10,
-              color: Colors.grey,
+            SizedBox(height: ManagerHeight.h4),
+            Text(
+              "${chat.membersCount} مشاركين",
+              style: getRegularTextStyle(
+                fontSize: ManagerFontSize.s10,
+                color: Colors.grey,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

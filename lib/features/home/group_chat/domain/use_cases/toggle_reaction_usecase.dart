@@ -1,20 +1,20 @@
 import '../../data/repository/chat_group_repository.dart';
 
-class UpdateMessageStatusUseCase {
+class ToggleReactionUseCase {
   final ChatGroupRepository repository;
 
-  UpdateMessageStatusUseCase(this.repository);
+  ToggleReactionUseCase(this.repository);
 
   Future<void> call({
     required String groupId,
     required String messageId,
     required String userId,
-    required String status,
+    required String emoji,
   }) =>
-      repository.updateMessageStatus(
+      repository.toggleMessageReaction(
         groupId: groupId,
         messageId: messageId,
         userId: userId,
-        status: status,
+        emoji: emoji,
       );
 }

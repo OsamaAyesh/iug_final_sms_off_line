@@ -1,5 +1,3 @@
-// المسار: lib/features/home/group_chat/data/response/message_response.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MessageResponse {
@@ -11,6 +9,9 @@ class MessageResponse {
   final Map<String, dynamic>? status;
   final bool? isGroup;
   final DateTime? timestamp;
+  final Map<String, dynamic>? reactions;
+  final bool? isEdited;
+  final DateTime? editedAt;
 
   MessageResponse({
     this.id,
@@ -21,21 +22,80 @@ class MessageResponse {
     this.status,
     this.isGroup,
     this.timestamp,
+    this.reactions,
+    this.isEdited,
+    this.editedAt,
   });
 
   factory MessageResponse.fromJson(Map<String, dynamic> json, String id) {
-    return MessageResponse(
-      id: id,
-      senderId: json['senderId'] as String?,
-      content: json['content'] as String?,
-      mentions: (json['mentions'] as List<dynamic>?)
-          ?.map((e) => e.toString())
-          .toList() ?? [],
-      replyTo: json['replyTo'] as String?,
-      status: Map<String, dynamic>.from(json['status'] ?? {}),
-      isGroup: json['isGroup'] as bool? ?? true,
-      timestamp: (json['timestamp'] as Timestamp?)?.toDate(),
-    );
+    try {
+      // معالجة آمنة للحالة
+      Map<String, dynamic> statusMap = {};
+      final statusData = json['status'];
+      if (statusData is Map<String, dynamic>) {
+        statusMap = statusData;
+      } else if (statusData is Map<dynamic, dynamic>) {
+        statusMap = statusData.cast<String, dynamic>();
+      }
+
+      // معالجة آمنة للتفاعلات
+      Map<String, dynamic> reactionsMap = {};
+      final reactionsData = json['reactions'];
+      if (reactionsData is Map<String, dynamic>) {
+        reactionsMap = reactionsData;
+      } else if (reactionsData is Map<dynamic, dynamic>) {
+        reactionsMap = reactionsData.cast<String, dynamic>();
+      }
+
+      // معالجة آمنة للمنشن
+      List<String> mentionsList = [];
+      final mentionsData = json['mentions'];
+      if (mentionsData is List<dynamic>) {
+        mentionsList = mentionsData.map((e) => e.toString()).toList();
+      }
+
+      return MessageResponse(
+        id: id,
+        senderId: _safeString(json['senderId']),
+        content: _safeString(json['content']),
+        mentions: mentionsList,
+        replyTo: _safeString(json['replyTo']),
+        status: statusMap,
+        isGroup: json['isGroup'] as bool? ?? true,
+        timestamp: _safeTimestamp(json['timestamp']),
+        reactions: reactionsMap,
+        isEdited: json['isEdited'] as bool? ?? false,
+        editedAt: _safeTimestamp(json['editedAt']),
+      );
+    } catch (e) {
+      print('❌ Error creating MessageResponse: $e');
+      print('📄 JSON data: $json');
+
+      // إرجاع رسالة افتراضية في حالة الخطأ
+      return MessageResponse(
+        id: id,
+        senderId: 'unknown',
+        content: 'رسالة غير قابلة للقراءة',
+        mentions: [],
+        status: {},
+        timestamp: DateTime.now(),
+        isGroup: true,
+        reactions: {},
+        isEdited: false,
+      );
+    }
+  }
+
+// دوال مساعدة للتحويل الآمن
+  static String _safeString(dynamic value) {
+    if (value is String) return value;
+    return value?.toString() ?? '';
+  }
+
+  static DateTime? _safeTimestamp(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    return null;
   }
 
   Map<String, dynamic> toJson() => {
@@ -47,5 +107,8 @@ class MessageResponse {
     'status': status,
     'isGroup': isGroup,
     'timestamp': timestamp != null ? Timestamp.fromDate(timestamp!) : null,
+    'reactions': reactions,
+    'isEdited': isEdited,
+    'editedAt': editedAt != null ? Timestamp.fromDate(editedAt!) : null,
   };
 }
