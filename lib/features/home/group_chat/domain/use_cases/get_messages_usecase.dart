@@ -6,6 +6,6 @@ class GetMessagesUseCase {
 
   GetMessagesUseCase(this.repository);
 
-  Stream<List<MessageModel>> call(String groupId, String currentUserId) =>
-      repository.getMessages(groupId, currentUserId);
+  // Stream<List<MessageModel>> call(String groupId, String currentUserId) =>
+  //     repository.getMessages(groupId, currentUserId);
 }

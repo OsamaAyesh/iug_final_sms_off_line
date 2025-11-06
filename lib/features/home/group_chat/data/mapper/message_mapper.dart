@@ -1,3 +1,5 @@
+// المسار: lib/features/home/group_chat/data/mapper/message_mapper.dart
+
 import 'package:app_mobile/features/home/group_chat/domain/models/message_model.dart';
 import '../response/message_response.dart';
 
@@ -10,12 +12,11 @@ extension MessageMapper on MessageResponse {
       mentions: mentions ?? [],
       replyTo: replyTo,
       status: (status ?? {}).map((key, value) => MapEntry(key, value.toString())),
+      reactions: reactions,
       timestamp: timestamp ?? DateTime.now(),
       isGroup: isGroup ?? true,
-      reactions: (reactions ?? {}).map((key, value) =>
-          MapEntry(key, List<String>.from(value ?? []))),
-      isEdited: isEdited ?? false,
-      editedAt: editedAt,
+      isDeleted: isDeleted ?? false,
+      deletedBy: deletedBy,
     );
   }
 }

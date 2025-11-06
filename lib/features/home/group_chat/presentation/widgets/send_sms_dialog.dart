@@ -21,7 +21,7 @@ class _SendSmsDialogState extends State<SendSmsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<ChatGroupController>();
+    final controller = ChatGroupController.to;
 
     return Dialog(
       shape: RoundedRectangleBorder(
@@ -220,9 +220,8 @@ class _SendSmsDialogState extends State<SendSmsDialog> {
       String optionKey,
       ) {
     final isSelected = selectedOption == optionKey;
-    final controller = Get.find<ChatGroupController>();
+    final controller = ChatGroupController.to;
 
-    // تحقق من وجود مستخدمين
     int userCount = 0;
     switch (optionKey) {
       case 'pending':
@@ -276,7 +275,9 @@ class _SendSmsDialogState extends State<SendSmsDialog> {
               Container(
                 padding: EdgeInsets.all(ManagerWidth.w12),
                 decoration: BoxDecoration(
-                  color: isSelected ? color.withOpacity(0.2) : color.withOpacity(0.1),
+                  color: isSelected
+                      ? color.withOpacity(0.2)
+                      : color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 24),
@@ -590,7 +591,8 @@ class _SendSmsDialogState extends State<SendSmsDialog> {
           Expanded(
             flex: 2,
             child: Obx(() => ElevatedButton.icon(
-              onPressed: selectedOption == null || controller.isSendingSms.value
+              onPressed: selectedOption == null ||
+                  controller.isSendingSms.value
                   ? null
                   : () => _confirmAndSend(controller),
               style: ElevatedButton.styleFrom(
@@ -610,12 +612,16 @@ class _SendSmsDialogState extends State<SendSmsDialog> {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  valueColor:
+                  AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
-                  : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                  : const Icon(Icons.send_rounded,
+                  color: Colors.white, size: 20),
               label: Text(
-                controller.isSendingSms.value ? "جاري الإرسال..." : "إرسال SMS",
+                controller.isSendingSms.value
+                    ? "جاري الإرسال..."
+                    : "إرسال SMS",
                 style: getBoldTextStyle(
                   fontSize: ManagerFontSize.s14,
                   color: Colors.white,
@@ -644,7 +650,8 @@ class _SendSmsDialogState extends State<SendSmsDialog> {
                 color: Colors.orange.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+              child: Icon(Icons.warning_amber_rounded,
+                  color: Colors.orange, size: 28),
             ),
             SizedBox(width: ManagerWidth.w12),
             Expanded(
@@ -678,7 +685,8 @@ class _SendSmsDialogState extends State<SendSmsDialog> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue.shade700, size: 18),
+                  Icon(Icons.info_outline,
+                      color: Colors.blue.shade700, size: 18),
                   SizedBox(width: ManagerWidth.w8),
                   Expanded(
                     child: Text(
@@ -706,10 +714,10 @@ class _SendSmsDialogState extends State<SendSmsDialog> {
             ),
           ),
           ElevatedButton.icon(
-            onPressed: () async{
+            onPressed: () async {
               Get.back();
               await controller.sendSmsTo(selectedOption!);
-              if (Get.isDialogOpen ?? false) Get.back(); // إغلاق الـ Dialog بعد انتهاء الإرسال
+              if (Get.isDialogOpen ?? false) Get.back();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: ManagerColors.primaryColor,

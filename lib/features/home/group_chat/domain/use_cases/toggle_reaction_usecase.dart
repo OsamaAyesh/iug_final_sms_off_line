@@ -5,16 +5,16 @@ class ToggleReactionUseCase {
 
   ToggleReactionUseCase(this.repository);
 
-  Future<void> call({
-    required String groupId,
-    required String messageId,
-    required String userId,
-    required String emoji,
-  }) =>
-      repository.toggleMessageReaction(
-        groupId: groupId,
-        messageId: messageId,
-        userId: userId,
-        emoji: emoji,
-      );
+  // Future<void> call({
+  //   required String groupId,
+  //   required String messageId,
+  //   required String userId,
+  //   required String emoji,
+  // }) =>
+  //     repository.toggleMessageReaction(
+  //       groupId: groupId,
+  //       messageId: messageId,
+  //       userId: userId,
+  //       emoji: emoji,
+  //     );
 }

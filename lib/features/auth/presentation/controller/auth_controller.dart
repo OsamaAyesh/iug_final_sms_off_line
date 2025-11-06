@@ -78,12 +78,52 @@ class AuthController extends GetxController {
   }
 
   /// Verify OTP
+  // Future<void> verifyOtp(String phone, String otp, String name) async {
+  //   if (otp.isEmpty) {
+  //     AppSnackbar.warning(
+  //       title: "التحقق",
+  //       "يرجى إدخال رقم التحقق",
+  //     );
+  //     return;
+  //   }
+  //
+  //   _showLoading();
+  //   try {
+  //     final result = await di.verifyOtpUseCase(phone, otp, name);
+  //     if (result != null) {
+  //       user.value = result;
+  //       isVerified.value = true;
+  //       AppSnackbar.success("تم التحقق بنجاح");
+  //
+  //       /// حفظ حالة المستخدم في SharedPreferences
+  //       await _prefs.setUserLoggedIn();
+  //       // if (result.token != null && result.token!.isNotEmpty) {
+  //       //   await _prefs.setToken(token: result.token!);
+  //       // }
+  //
+  //       /// يمكنك أيضًا حفظ رقم الهاتف أو الاسم إذا أردت مستقبلاً
+  //       /// await _prefs.setUserPhone(phone);
+  //       /// await _prefs.setUserName(name);
+  //
+  //       // Redirect after delay
+  //       Future.delayed(const Duration(seconds: 1), () {
+  //         Get.offAll(() => const SuccessVerifyScreen());
+  //       });
+  //     } else {
+  //       AppSnackbar.error("كود التحقق غير صحيح");
+  //     }
+  //   } catch (e) {
+  //     Get.snackbar("Error", e.toString());
+  //   } finally {
+  //     _hideLoading();
+  //   }
+  // }
+  /// في ملف: lib/features/auth/presentation/controller/auth_controller.dart
+
+  /// Verify OTP
   Future<void> verifyOtp(String phone, String otp, String name) async {
     if (otp.isEmpty) {
-      AppSnackbar.warning(
-        title: "التحقق",
-        "يرجى إدخال رقم التحقق",
-      );
+      AppSnackbar.warning("يرجى إدخال رقم التحقق");
       return;
     }
 
@@ -91,21 +131,22 @@ class AuthController extends GetxController {
     try {
       final result = await di.verifyOtpUseCase(phone, otp, name);
       if (result != null) {
-        user.value = result;
-        isVerified.value = true;
-        AppSnackbar.success("تم التحقق بنجاح");
+        // ... نجاح التحقق
 
-        /// حفظ حالة المستخدم في SharedPreferences
+        /// 🔹 حفظ بيانات المستخدم باستخدام الدوال الجديدة
+        final canonical = phone.replaceAll("+", "").replaceAll(RegExp(r'^0+'), "");
+
         await _prefs.setUserLoggedIn();
-        // if (result.token != null && result.token!.isNotEmpty) {
-        //   await _prefs.setToken(token: result.token!);
-        // }
+        await _prefs.setUserId(canonical);
+        await _prefs.setUserName(name);
+        await _prefs.setUserPhone(phone);
 
-        /// يمكنك أيضًا حفظ رقم الهاتف أو الاسم إذا أردت مستقبلاً
-        /// await _prefs.setUserPhone(phone);
-        /// await _prefs.setUserName(name);
+        print('✅ تم حفظ بيانات المستخدم:');
+        print('   - user_id: $canonical');
+        print('   - user_name: $name');
+        print('   - user_phone: $phone');
 
-        // Redirect after delay
+        // Redirect
         Future.delayed(const Duration(seconds: 1), () {
           Get.offAll(() => const SuccessVerifyScreen());
         });
@@ -118,7 +159,6 @@ class AuthController extends GetxController {
       _hideLoading();
     }
   }
-
   /// Loading Overlay
   void _showLoading() {
     if (!isLoading.value && !(Get.isDialogOpen ?? false)) {

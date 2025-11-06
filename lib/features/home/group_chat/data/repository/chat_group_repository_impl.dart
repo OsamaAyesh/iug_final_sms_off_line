@@ -1,3 +1,5 @@
+// المسار: lib/features/home/group_chat/data/repository/chat_group_repository_impl.dart
+
 import 'package:app_mobile/features/home/group_chat/domain/models/message_model.dart';
 import '../data_source/chat_group_remote_data_source.dart';
 import '../mapper/message_mapper.dart';
@@ -10,8 +12,8 @@ class ChatGroupRepositoryImpl implements ChatGroupRepository {
   ChatGroupRepositoryImpl(this.remote);
 
   @override
-  Stream<List<MessageModel>> getMessages(String groupId, String currentUserId) {
-    return remote.getMessages(groupId, currentUserId).map(
+  Stream<List<MessageModel>> getMessages(String groupId) {
+    return remote.getMessages(groupId).map(
             (list) => list.map((message) => message.toDomain()).toList());
   }
 
@@ -52,6 +54,16 @@ class ChatGroupRepositoryImpl implements ChatGroupRepository {
       remote.getGroupMembers(groupId);
 
   @override
+  Future<void> markMessagesAsDelivered({
+    required String groupId,
+    required String userId,
+  }) =>
+      remote.markMessagesAsDelivered(
+        groupId: groupId,
+        userId: userId,
+      );
+
+  @override
   Future<void> markMessagesAsSeen({
     required String groupId,
     required String userId,
@@ -62,15 +74,41 @@ class ChatGroupRepositoryImpl implements ChatGroupRepository {
       );
 
   @override
-  Future<void> markMessageAsDelivered({
+  Future<void> addOrUpdateReaction({
+    required String groupId,
+    required String messageId,
+    required String userId,
+    required String emoji,
+  }) =>
+      remote.addOrUpdateReaction(
+        groupId: groupId,
+        messageId: messageId,
+        userId: userId,
+        emoji: emoji,
+      );
+
+  @override
+  Future<void> removeReaction({
     required String groupId,
     required String messageId,
     required String userId,
   }) =>
-      remote.markMessageAsDelivered(
+      remote.removeReaction(
         groupId: groupId,
         messageId: messageId,
         userId: userId,
+      );
+
+  @override
+  Future<void> deleteMessage({
+    required String groupId,
+    required String messageId,
+    required String deletedBy,
+  }) =>
+      remote.deleteMessage(
+        groupId: groupId,
+        messageId: messageId,
+        deletedBy: deletedBy,
       );
 
   @override
@@ -80,40 +118,4 @@ class ChatGroupRepositoryImpl implements ChatGroupRepository {
       String text,
       ) =>
       remote.sendSmsToUsers(groupId, numbers, text);
-
-  @override
-  Future<void> toggleMessageReaction({
-    required String groupId,
-    required String messageId,
-    required String userId,
-    required String emoji,
-  }) =>
-      remote.toggleMessageReaction(
-        groupId: groupId,
-        messageId: messageId,
-        userId: userId,
-        emoji: emoji,
-      );
-
-  @override
-  Future<void> deleteMessage({
-    required String groupId,
-    required String messageId,
-    required String userId,
-    required bool isAdmin,
-  }) =>
-      remote.deleteMessage(
-        groupId: groupId,
-        messageId: messageId,
-        userId: userId,
-        isAdmin: isAdmin,
-      );
-
-  @override
-  Stream<Map<String, dynamic>> getUserConnectionStatus(String userId) =>
-      remote.getUserConnectionStatus(userId);
-
-  @override
-  Future<void> updateUserConnectionStatus(String userId, bool isOnline) =>
-      remote.updateUserConnectionStatus(userId, isOnline);
 }
