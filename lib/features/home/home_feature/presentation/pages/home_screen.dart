@@ -10,6 +10,7 @@ import '../../../../../core/resources/manager_height.dart';
 import '../../../../../core/resources/manager_styles.dart';
 import '../../../../../core/resources/manager_width.dart';
 import '../../../../../core/util/empty_state_widget.dart';
+import '../../../../../core/util/snack_bar.dart';
 import '../../../add_chat/presentation/pages/add_chat_screen.dart';
 import '../../../add_chat/presentation/pages/cloudinary_image_avatar.dart';
 import '../../../add_chat/presentation/pages/select_members_screen.dart';
@@ -38,6 +39,47 @@ class _HomeScreenState extends State<HomeScreen>
       if (_tabController.indexIsChanging) return;
       controller.changeTab(_tabController.index);
     });
+
+    // التحقق من حالة المستخدم بعد تهيئة الواجهة
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _checkUserStatus();
+    });
+  }
+
+  Future<void> _checkUserStatus() async {
+    final isLoggedIn = await controller.checkUserLoggedIn();
+    if (!isLoggedIn) {
+      _showLoginRequiredDialog();
+    }
+  }
+
+  void _showLoginRequiredDialog() {
+    Get.dialog(
+      AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.person_off, color: Colors.orange),
+            SizedBox(width: ManagerWidth.w8),
+            Text('تسجيل الدخول مطلوب'),
+          ],
+        ),
+        content: Text('يجب تسجيل الدخول لعرض المحادثات والمجموعات'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text('لاحقاً'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              // Get.to(() => LoginScreen());
+            },
+            child: Text('تسجيل الدخول'),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
   }
 
   @override
@@ -66,11 +108,17 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildFAB() {
-    return FloatingActionButton(
-      backgroundColor: ManagerColors.primaryColor,
-      onPressed: _showAddMenu,
-      child: const Icon(Icons.add, color: Colors.white),
-    );
+    return Obx(() {
+      if (!controller.isUserLoggedIn.value) {
+        return SizedBox.shrink(); // إخفاء الزر إذا لم يكن مسجلاً
+      }
+
+      return FloatingActionButton(
+        backgroundColor: ManagerColors.primaryColor,
+        onPressed: _showAddMenu,
+        child: const Icon(Icons.add, color: Colors.white),
+      );
+    });
   }
 
   void _showAddMenu() {
@@ -81,9 +129,7 @@ class _HomeScreenState extends State<HomeScreen>
         padding: EdgeInsets.all(ManagerWidth.w20),
         decoration: const BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(20),
-          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -214,13 +260,22 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ),
                   const PopupMenuItem(
+                    value: 'refresh',
+                    child: Row(
+                      children: [
+                        Icon(Icons.refresh),
+                        SizedBox(width: 12),
+                        Text('تحديث'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
                     value: 'logout',
                     child: Row(
                       children: [
                         Icon(Icons.logout, color: Colors.red),
                         SizedBox(width: 12),
-                        Text('تسجيل الخروج',
-                            style: TextStyle(color: Colors.red)),
+                        Text('تسجيل الخروج', style: TextStyle(color: Colors.red)),
                       ],
                     ),
                   ),
@@ -239,8 +294,21 @@ class _HomeScreenState extends State<HomeScreen>
     return Obx(() {
       final imageUrl = controller.currentUserImageUrl.value;
 
+      if (!controller.isUserLoggedIn.value) {
+        return GestureDetector(
+          onTap: () {
+            // Get.to(() => LoginScreen());
+          },
+          child: CircleAvatar(
+            radius: 20,
+            backgroundColor: Colors.white,
+            child: Icon(Icons.person_add, color: ManagerColors.primaryColor),
+          ),
+        );
+      }
+
       if (imageUrl == null || imageUrl.isEmpty) {
-        return const CircleAvatar(
+        return CircleAvatar(
           radius: 20,
           backgroundColor: Colors.white,
           child: Icon(Icons.person, color: Colors.grey),
@@ -256,46 +324,56 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildSearchBar() {
-    return Container(
-      height: ManagerHeight.h40,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TextField(
-        controller: controller.searchController,
-        onChanged: controller.onSearchChanged,
-        textAlignVertical: TextAlignVertical.center,
-        style: getRegularTextStyle(
-          fontSize: ManagerFontSize.s12,
-          color: ManagerColors.black,
+    return Obx(() {
+      return Container(
+        height: ManagerHeight.h40,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
         ),
-        decoration: InputDecoration(
-          hintText: "ابحث في المحادثات...",
-          hintStyle: getRegularTextStyle(
+        child: TextField(
+          controller: controller.searchController,
+          onChanged: controller.onSearchChanged,
+          textAlignVertical: TextAlignVertical.center,
+          style: getRegularTextStyle(
             fontSize: ManagerFontSize.s12,
-            color: ManagerColors.greyWithColor,
+            color: ManagerColors.black,
           ),
-          prefixIcon: const Icon(
-            Icons.search,
-            color: Colors.grey,
-            size: 20,
+          decoration: InputDecoration(
+            hintText: controller.isUserLoggedIn.value
+                ? "ابحث في المحادثات..."
+                : "سجل الدخول للبحث...",
+            hintStyle: getRegularTextStyle(
+              fontSize: ManagerFontSize.s12,
+              color: ManagerColors.greyWithColor,
+            ),
+            prefixIcon: const Icon(
+              Icons.search,
+              color: Colors.grey,
+              size: 20,
+            ),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(
+              vertical: ManagerHeight.h10,
+              horizontal: ManagerWidth.w10,
+            ),
           ),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(
-            vertical: ManagerHeight.h10,
-            horizontal: ManagerWidth.w10,
-          ),
+          enabled: controller.isUserLoggedIn.value,
         ),
-      ),
-    );
+      );
+    });
   }
 
   void _handleMenuAction(String value) {
     switch (value) {
       case 'settings':
+      // TODO: Navigate to settings
         break;
       case 'profile':
+      // TODO: Navigate to profile
+        break;
+      case 'refresh':
+        controller.smartRefresh();
         break;
       case 'logout':
         _showLogoutDialog();
@@ -316,6 +394,7 @@ class _HomeScreenState extends State<HomeScreen>
           TextButton(
             onPressed: () {
               Get.back();
+              _performLogout();
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('تسجيل الخروج'),
@@ -325,25 +404,180 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  void _performLogout() async {
+    try {
+      await controller.resetUser();
+      AppSnackbar.success('تم تسجيل الخروج بنجاح');
+
+      Future.delayed(Duration(seconds: 1), () {
+        // Get.offAll(() => LoginScreen());
+      });
+    } catch (e) {
+      AppSnackbar.error('فشل تسجيل الخروج: $e');
+    }
+  }
+
   Widget _buildChatList() {
     return Obx(() {
+      // 🔹 حالة عدم تسجيل الدخول
+      if (!controller.isUserLoggedIn.value) {
+        return _buildNotLoggedInState();
+      }
+
+      // 🔹 حالة أخطاء الفهارس
+      if (controller.hasIndexError.value) {
+        return _buildIndexErrorState();
+      }
+
+      // 🔹 حالة التحميل
       if (controller.isLoading.value) {
         return const Center(child: LoadingWidget());
       }
 
-      final chats = controller.filteredChats;
-      if (chats.isEmpty) {
-        return Center(
-          child: EmptyStateWidget(
-            messageAr: _getEmptyMessage(),
-          ),
-        );
+      // 🔹 حالة لا توجد محادثات (ولكن المستخدم مسجل)
+      if (controller.filteredChats.isEmpty) {
+        return _buildNoChatsState();
       }
 
-      return ListView.builder(
-        itemCount: chats.length,
+      // 🔹 حالة طبيعية - عرض المحادثات
+      return _buildChatsListView();
+    });
+  }
+
+  Widget _buildNotLoggedInState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.person_off_outlined,
+            size: 80,
+            color: Colors.grey.shade300,
+          ),
+          SizedBox(height: ManagerHeight.h16),
+          Text(
+            "غير مسجل دخول",
+            style: getBoldTextStyle(
+              fontSize: ManagerFontSize.s16,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          SizedBox(height: ManagerHeight.h8),
+          Text(
+            "سجل الدخول لعرض المحادثات والمجموعات",
+            style: getRegularTextStyle(
+              fontSize: ManagerFontSize.s14,
+              color: Colors.grey.shade400,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: ManagerHeight.h20),
+          ElevatedButton.icon(
+            onPressed: () {
+              // Get.to(() => LoginScreen());
+            },
+            icon: Icon(Icons.login),
+            label: Text("تسجيل الدخول"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ManagerColors.primaryColor,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIndexErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.sync_problem_outlined,
+            size: 80,
+            color: Colors.orange.shade300,
+          ),
+          SizedBox(height: ManagerHeight.h16),
+          Text(
+            "جاري تحميل المحادثات",
+            style: getBoldTextStyle(
+              fontSize: ManagerFontSize.s16,
+              color: Colors.orange.shade600,
+            ),
+          ),
+          SizedBox(height: ManagerHeight.h8),
+          Text(
+            "هذا قد يستغرق بضع ثوانٍ",
+            style: getRegularTextStyle(
+              fontSize: ManagerFontSize.s14,
+              color: Colors.grey.shade400,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: ManagerHeight.h20),
+          CircularProgressIndicator(),
+          SizedBox(height: ManagerHeight.h20),
+          OutlinedButton(
+            onPressed: () => controller.smartRefresh(),
+            child: Text("إعادة المحاولة"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoChatsState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.chat_bubble_outline,
+            size: 80,
+            color: Colors.grey.shade300,
+          ),
+          SizedBox(height: ManagerHeight.h16),
+          Text(
+            "لا توجد محادثات",
+            style: getBoldTextStyle(
+              fontSize: ManagerFontSize.s16,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          SizedBox(height: ManagerHeight.h8),
+          Text(
+            "ابدأ محادثة جديدة بالضغط على زر (+)",
+            style: getRegularTextStyle(
+              fontSize: ManagerFontSize.s14,
+              color: Colors.grey.shade400,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: ManagerHeight.h20),
+          ElevatedButton.icon(
+            onPressed: _showAddMenu,
+            icon: Icon(Icons.add),
+            label: Text("بدء محادثة جديدة"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ManagerColors.primaryColor,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChatsListView() {
+    return RefreshIndicator(
+      onRefresh: () async {
+        await controller.smartRefresh();
+      },
+      child: ListView.builder(
+        itemCount: controller.filteredChats.length,
         itemBuilder: (context, index) {
-          final chat = chats[index];
+          final chat = controller.filteredChats[index];
           return Dismissible(
             key: Key(chat.id),
             direction: DismissDirection.endToStart,
@@ -362,19 +596,8 @@ class _HomeScreenState extends State<HomeScreen>
                 : _buildPrivateTile(chat),
           );
         },
-      );
-    });
-  }
-
-  String _getEmptyMessage() {
-    switch (controller.selectedTabIndex.value) {
-      case 1:
-        return 'لا توجد محادثات خاصة';
-      case 2:
-        return 'لا توجد مجموعات';
-      default:
-        return 'لا توجد محادثات';
-    }
+      ),
+    );
   }
 
   Future<bool> _confirmDelete(chat) async {
@@ -398,8 +621,7 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
       ),
-    ) ??
-        false;
+    ) ?? false;
   }
 
   Widget _buildPrivateTile(chat) {

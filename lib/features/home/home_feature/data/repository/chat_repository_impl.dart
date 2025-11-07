@@ -6,14 +6,29 @@ class ChatRepositoryImpl {
   ChatRepositoryImpl({required this.remote});
 
   Future<List<ChatRoomModel>> getAllChats() async {
-    return await remote.getAllChats();
+    try {
+      return await remote.getAllChats();
+    } catch (e) {
+      print('❌ Repository Error in getAllChats: $e');
+      return [];
+    }
   }
 
   Future<List<ChatRoomModel>> getPrivateChats() async {
-    return await remote.getPrivateChats();
+    try {
+      return await remote.getPrivateChats();
+    } catch (e) {
+      print('❌ Repository Error in getPrivateChats: $e');
+      return [];
+    }
   }
 
   Future<List<ChatRoomModel>> getGroupChats() async {
-    return await remote.getGroupChats();
+    try {
+      return await remote.getGroupChats();
+    } catch (e) {
+      print('❌ Repository Error in getGroupChats: $e');
+      return [];
+    }
   }
 }

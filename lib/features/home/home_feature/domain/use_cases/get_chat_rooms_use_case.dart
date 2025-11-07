@@ -6,14 +6,20 @@ class GetChatRoomsUseCase {
   GetChatRoomsUseCase(this._repository);
 
   Future<List<ChatRoomModel>> executeAll() async {
-    return await _repository.getAllChats();
+    final chats = await _repository.getAllChats();
+    print('🎯 UseCase: Returning ${chats.length} chats for current user');
+    return chats;
   }
 
   Future<List<ChatRoomModel>> executeGroups() async {
-    return await _repository.getGroupChats();
+    final groups = await _repository.getGroupChats();
+    print('🎯 UseCase: Returning ${groups.length} groups for current user');
+    return groups;
   }
 
   Future<List<ChatRoomModel>> executePrivate() async {
-    return await _repository.getPrivateChats();
+    final privateChats = await _repository.getPrivateChats();
+    print('🎯 UseCase: Returning ${privateChats.length} private chats for current user');
+    return privateChats;
   }
 }
