@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:get/get.dart';
+import '../../../../../constants/constants/constants.dart';
 import '../../../../../core/util/snack_bar.dart';
 import '../request/send_message_request.dart';
 import '../response/message_response.dart';
@@ -14,7 +15,7 @@ class ChatGroupRemoteDataSource {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // ================================
-  // ✅ 1. STREAM MESSAGES (Real-time)
+  // ✅ 1. STREAM MESSAGES (مع معالجة الأخطاء)
   // ================================
   Stream<List<MessageResponse>> getMessages(String groupId) {
     return _firestore
@@ -23,35 +24,61 @@ class ChatGroupRemoteDataSource {
         .collection('messages')
         .orderBy('timestamp', descending: false)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => MessageResponse.fromJson(doc.data(), doc.id))
-        .toList());
+        .asyncMap((snapshot) async {
+      final messages = <MessageResponse>[];
+
+      for (var doc in snapshot.docs) {
+        try {
+          final message = MessageResponse.fromJson(doc.data(), doc.id);
+          messages.add(message);
+        } catch (e) {
+          print('❌ Error parsing message ${doc.id}: $e');
+          print('❌ Message data: ${doc.data()}');
+          // ✅ نستمر في تحميل الرسائل الأخرى رغم الخطأ
+        }
+      }
+
+      return messages;
+    }).handleError((error) {
+      print('❌ Error in messages stream: $error');
+      // ✅ إرجاع قائمة فارغة بدلاً من إلقاء الخطأ
+      return <MessageResponse>[];
+    });
   }
 
   // ================================
-  // ✅ 2. SEND MESSAGE (Optimistic UI)
+  // ✅ 2. SEND MESSAGE (مع تحسين معالجة البيانات)
   // ================================
   Future<void> sendMessage(SendMessageRequest request) async {
     try {
       final groupDoc =
       await _firestore.collection('groups').doc(request.groupId).get();
-      if (!groupDoc.exists) throw Exception('المجموعة غير موجودة');
+
+      if (!groupDoc.exists) {
+        throw Exception('المجموعة غير موجودة');
+      }
 
       final members = List<String>.from(groupDoc.data()?['participants'] ?? []);
 
-      // ✅ بناء حالة أولية للرسالة
-      final Map<String, String> initialStatus = {};
+      // ✅ بناء حالة أولية للرسالة بشكل آمن
+      final Map<String, dynamic> initialStatus = {};
       for (var memberId in members) {
         if (memberId != request.senderId) {
           initialStatus[memberId] = 'pending';
+        } else {
+          initialStatus[memberId] = 'sent';
         }
       }
 
       final messageData = request.toJson();
+
+      // ✅ التأكد من أن الحقول بالأنواع الصحيحة
       messageData['status'] = initialStatus;
-      messageData['reactions'] = {}; // تفاعلات فارغة
-      messageData['isDeleted'] = false;
-      messageData['deletedBy'] = null;
+      messageData['reactions'] = messageData['reactions'] ?? {};
+      messageData['isDeleted'] = messageData['isDeleted'] ?? false;
+      messageData['deletedBy'] = messageData['deletedBy'];
+      messageData['mentions'] = messageData['mentions'] ?? [];
+      messageData['isGroup'] = messageData['isGroup'] ?? true;
 
       // ✅ إضافة الرسالة
       await _firestore
@@ -67,7 +94,9 @@ class ChatGroupRemoteDataSource {
         'lastMessageTime': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
     } catch (e) {
+      print('❌ Error sending message: $e');
       AppSnackbar.error('حدث خطأ أثناء إرسال الرسالة',
           englishMessage: 'Error sending message: $e');
       rethrow;
@@ -75,7 +104,80 @@ class ChatGroupRemoteDataSource {
   }
 
   // ================================
-  // ✅ 3. UPDATE MESSAGE STATUS
+  // ✅ 3. GET GROUP MEMBERS (مع معالجة الأخطاء)
+  // ================================
+  Future<List<Map<String, dynamic>>> getGroupMembers(String groupId) async {
+    try {
+      final groupDoc = await _firestore.collection('groups').doc(groupId).get();
+      if (!groupDoc.exists) {
+        print('❌ Group $groupId does not exist');
+        return [];
+      }
+
+      final memberIds =
+      List<String>.from(groupDoc.data()?['participants'] ?? []);
+      final admins = List<String>.from(groupDoc.data()?['admins'] ?? []);
+
+      final List<Map<String, dynamic>> members = [];
+
+      for (var memberId in memberIds) {
+        try {
+          final userDoc = await _firestore.collection('users').doc(memberId).get();
+          if (userDoc.exists) {
+            final userData = Map<String, dynamic>.from(userDoc.data()!);
+
+            // ✅ تنظيف البيانات والتأكد من الأنواع
+            final cleanUserData = {
+              'userId': memberId,
+              'name': _safeString(userData['name']) ?? 'مستخدم',
+              'imageUrl': _safeString(userData['imageUrl']) ?? '',
+              'phone': _safeString(userData['phone']),
+              'phoneCanon': _safeString(userData['phoneCanon']),
+              'isOnline': userData['isOnline'] ?? false,
+              'lastSeen': userData['lastSeen'],
+              'isAdmin': admins.contains(memberId),
+            };
+
+            members.add(cleanUserData);
+          } else {
+            print('⚠️ User $memberId not found, using default data');
+            members.add({
+              'userId': memberId,
+              'name': 'مستخدم',
+              'imageUrl': '',
+              'isAdmin': admins.contains(memberId),
+              'isOnline': false,
+            });
+          }
+        } catch (e) {
+          print('❌ Error loading user $memberId: $e');
+          // ✅ نستمر في تحميل الأعضاء الآخرين
+          members.add({
+            'userId': memberId,
+            'name': 'مستخدم',
+            'imageUrl': '',
+            'isAdmin': admins.contains(memberId),
+            'isOnline': false,
+          });
+        }
+      }
+
+      return members;
+    } catch (e) {
+      print('❌ Error loading group members: $e');
+      return [];
+    }
+  }
+
+  // ✅ دالة مساعدة للتحقق من String
+  String? _safeString(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    return value.toString();
+  }
+
+  // ================================
+  // ✅ 4. UPDATE MESSAGE STATUS (مع معالجة الأخطاء)
   // ================================
   Future<void> updateMessageStatus({
     required String groupId,
@@ -91,12 +193,13 @@ class ChatGroupRemoteDataSource {
           .doc(messageId)
           .update({'status.$userId': status});
     } catch (e) {
-      print('Error updating status: $e');
+      print('❌ Error updating status: $e');
+      // لا نعيد throw الخطأ لأنها عملية ثانوية
     }
   }
 
   // ================================
-  // ✅ 4. BATCH UPDATE (للأداء)
+  // ✅ 5. BATCH UPDATE (مع معالجة الأخطاء)
   // ================================
   Future<void> batchUpdateMessageStatus({
     required String groupId,
@@ -116,12 +219,12 @@ class ChatGroupRemoteDataSource {
       }
       await batch.commit();
     } catch (e) {
-      print('Batch update error: $e');
+      print('❌ Batch update error: $e');
     }
   }
 
   // ================================
-  // ✅ 5. MARK AS DELIVERED (Auto)
+  // ✅ 6. MARK AS DELIVERED (مع معالجة الأخطاء)
   // ================================
   Future<void> markMessagesAsDelivered({
     required String groupId,
@@ -139,16 +242,20 @@ class ChatGroupRemoteDataSource {
 
       final batch = _firestore.batch();
       for (var doc in snap.docs) {
-        batch.update(doc.reference, {'status.$userId': 'delivered'});
+        try {
+          batch.update(doc.reference, {'status.$userId': 'delivered'});
+        } catch (e) {
+          print('❌ Error updating message ${doc.id}: $e');
+        }
       }
       await batch.commit();
     } catch (e) {
-      print('Error marking delivered: $e');
+      print('❌ Error marking delivered: $e');
     }
   }
 
   // ================================
-  // ✅ 6. MARK AS SEEN
+  // ✅ 7. MARK AS SEEN
   // ================================
   Future<void> markMessagesAsSeen({
     required String groupId,
@@ -169,12 +276,12 @@ class ChatGroupRemoteDataSource {
       }
       await batch.commit();
     } catch (e) {
-      print('Error marking seen: $e');
+      print('❌ Error marking seen: $e');
     }
   }
 
   // ================================
-  // ✅ 7. ADD/UPDATE REACTION
+  // ✅ 8. ADD/UPDATE REACTION
   // ================================
   Future<void> addOrUpdateReaction({
     required String groupId,
@@ -195,7 +302,7 @@ class ChatGroupRemoteDataSource {
   }
 
   // ================================
-  // ✅ 8. REMOVE REACTION
+  // ✅ 9. REMOVE REACTION
   // ================================
   Future<void> removeReaction({
     required String groupId,
@@ -215,7 +322,7 @@ class ChatGroupRemoteDataSource {
   }
 
   // ================================
-  // ✅ 9. DELETE MESSAGE
+  // ✅ 10. DELETE MESSAGE
   // ================================
   Future<void> deleteMessage({
     required String groupId,
@@ -240,35 +347,6 @@ class ChatGroupRemoteDataSource {
   }
 
   // ================================
-  // ✅ 10. GET GROUP MEMBERS
-  // ================================
-  Future<List<Map<String, dynamic>>> getGroupMembers(String groupId) async {
-    try {
-      final groupDoc = await _firestore.collection('groups').doc(groupId).get();
-      if (!groupDoc.exists) return [];
-
-      final memberIds =
-      List<String>.from(groupDoc.data()?['participants'] ?? []);
-      final admins = List<String>.from(groupDoc.data()?['admins'] ?? []);
-
-      final List<Map<String, dynamic>> members = [];
-      for (var memberId in memberIds) {
-        final userDoc = await _firestore.collection('users').doc(memberId).get();
-        if (userDoc.exists) {
-          final userData = Map<String, dynamic>.from(userDoc.data()!);
-          userData['userId'] = memberId;
-          userData['isAdmin'] = admins.contains(memberId);
-          members.add(userData);
-        }
-      }
-      return members;
-    } catch (e) {
-      print('Error loading members: $e');
-      return [];
-    }
-  }
-
-  // ================================
   // ✅ 11. SMS SENDING
   // ================================
   String _normalizePalestinianNumber(String number) {
@@ -287,7 +365,7 @@ class ChatGroupRemoteDataSource {
     int failCount = 0;
 
     const apiKey = "c735413907079a974249eaa7fb107ebd";
-    const senderName = "TweetTest";
+    const senderName = Constants.senderName;
 
     for (final rawNumber in numbers) {
       final number = _normalizePalestinianNumber(rawNumber);
@@ -342,7 +420,7 @@ class ChatGroupRemoteDataSource {
     if (result.contains("-113")) {
       return "الرصيد غير كافٍ لإرسال الرسالة إلى $number";
     } else if (result.contains("-115")) {
-      return "المرسل غير مفعّل (TweetTest)";
+      return "المرسل غير مفعّل (${Constants.senderName})";
     } else if (result.contains("-2")) {
       return "الرقم غير صالح أو غير مدعوم: $number";
     } else if (result.contains("-110")) {

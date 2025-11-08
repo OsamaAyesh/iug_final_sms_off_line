@@ -28,4 +28,8 @@ class Constants {
   static const String englishName = 'English';
   static const String english = 'en';
   static const String arabic = 'ar';
+  ///Sender Name Offline SMS
+  static const String senderName = 'Gridless';
+
+
 }

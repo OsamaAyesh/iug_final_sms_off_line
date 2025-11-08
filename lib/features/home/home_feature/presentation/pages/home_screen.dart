@@ -17,6 +17,8 @@ import '../../../add_chat/presentation/pages/select_members_screen.dart';
 import '../../../group_chat/presentation/pages/group_chat_screen.dart';
 import '../controller/chat_controller.dart';
 import '../widgets/custom_tab_switcher_trader.dart';
+import '../../domain/di/chat_di.dart';
+import '../widgets/shimmer_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,64 +30,36 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final ChatController controller = Get.put(ChatController());
+  late ChatController controller;
   final List<String> _tabs = ["الكل", "الدردشات", "المجموعات"];
 
   @override
   void initState() {
     super.initState();
+
+    ChatDI.init();
+    controller = ChatDI.controller;
+
     _tabController = TabController(length: _tabs.length, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
       controller.changeTab(_tabController.index);
     });
 
-    // التحقق من حالة المستخدم بعد تهيئة الواجهة
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _checkUserStatus();
     });
-  }
-
-  Future<void> _checkUserStatus() async {
-    final isLoggedIn = await controller.checkUserLoggedIn();
-    if (!isLoggedIn) {
-      _showLoginRequiredDialog();
-    }
-  }
-
-  void _showLoginRequiredDialog() {
-    Get.dialog(
-      AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.person_off, color: Colors.orange),
-            SizedBox(width: ManagerWidth.w8),
-            Text('تسجيل الدخول مطلوب'),
-          ],
-        ),
-        content: Text('يجب تسجيل الدخول لعرض المحادثات والمجموعات'),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text('لاحقاً'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              // Get.to(() => LoginScreen());
-            },
-            child: Text('تسجيل الدخول'),
-          ),
-        ],
-      ),
-      barrierDismissible: false,
-    );
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkUserStatus() async {
+    final isLoggedIn = await controller.checkUserLoggedIn();
+    print('👤 User login status: $isLoggedIn');
   }
 
   @override
@@ -107,18 +81,64 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  // ✅ إصلاح: استخدام GetBuilder بدلاً من Obx للـ FAB
   Widget _buildFAB() {
-    return Obx(() {
-      if (!controller.isUserLoggedIn.value) {
-        return SizedBox.shrink(); // إخفاء الزر إذا لم يكن مسجلاً
-      }
+    return GetBuilder<ChatController>(
+      builder: (controller) {
+        if (!controller.isUserLoggedIn.value) {
+          return FloatingActionButton(
+            backgroundColor: ManagerColors.primaryColor,
+            onPressed: _showLoginPrompt,
+            child: const Icon(Icons.login, color: Colors.white),
+          );
+        }
 
-      return FloatingActionButton(
-        backgroundColor: ManagerColors.primaryColor,
-        onPressed: _showAddMenu,
-        child: const Icon(Icons.add, color: Colors.white),
-      );
-    });
+        return FloatingActionButton(
+          backgroundColor: ManagerColors.primaryColor,
+          onPressed: _showAddMenu,
+          child: const Icon(Icons.add, color: Colors.white),
+        );
+      },
+    );
+  }
+
+  void _showLoginPrompt() {
+    Get.dialog(
+      AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.person_add, color: Colors.blue),
+            SizedBox(width: ManagerWidth.w8),
+            Text('تسجيل الدخول'),
+          ],
+        ),
+        content: Text('سجل الدخول لبدء محادثات جديدة وإنشاء مجموعات'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text('لاحقاً'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              _showInfoSnackbar('سيتم توجيهك إلى شاشة تسجيل الدخول');
+            },
+            child: Text('تسجيل الدخول'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showInfoSnackbar(String message) {
+    Get.snackbar(
+      'معلومة',
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.blue,
+      colorText: Colors.white,
+      duration: Duration(seconds: 3),
+    );
   }
 
   void _showAddMenu() {
@@ -158,7 +178,11 @@ class _HomeScreenState extends State<HomeScreen>
               subtitle: 'أضف شخصاً جديداً إلى جهات الاتصال',
               onTap: () {
                 Get.back();
-                Get.to(() => const AddChatScreen());
+                if (controller.isUserLoggedIn.value) {
+                  Get.to(() => const AddChatScreen());
+                } else {
+                  _showLoginPrompt();
+                }
               },
             ),
             const Divider(height: 1),
@@ -169,7 +193,11 @@ class _HomeScreenState extends State<HomeScreen>
               subtitle: 'أنشئ مجموعة جديدة مع أصدقائك',
               onTap: () {
                 Get.back();
-                Get.to(() => const SelectMembersScreen());
+                if (controller.isUserLoggedIn.value) {
+                  Get.to(() => const SelectMembersScreen());
+                } else {
+                  _showLoginPrompt();
+                }
               },
             ),
             SizedBox(height: ManagerHeight.h10),
@@ -213,175 +241,187 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  // ✅ إصلاح: استخدام GetBuilder للـ Header
   Widget _buildHeader() {
-    return Container(
-      color: ManagerColors.primaryColor,
-      padding: EdgeInsets.symmetric(
-        horizontal: ManagerWidth.w16,
-        vertical: ManagerHeight.h16,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return GetBuilder<ChatController>(
+      builder: (controller) {
+        return Container(
+          color: ManagerColors.primaryColor,
+          padding: EdgeInsets.symmetric(
+            horizontal: ManagerWidth.w16,
+            vertical: ManagerHeight.h16,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "المحادثات",
-                style: getRegularTextStyle(
-                  fontSize: ManagerFontSize.s20,
-                  color: Colors.white,
-                ),
-              ),
-              const Spacer(),
-              _buildProfileAvatar(),
-              SizedBox(width: ManagerWidth.w8),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Colors.white),
-                onSelected: _handleMenuAction,
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'settings',
-                    child: Row(
-                      children: [
-                        Icon(Icons.settings),
-                        SizedBox(width: 12),
-                        Text('الإعدادات'),
-                      ],
+              Row(
+                children: [
+                  Text(
+                    "المحادثات",
+                    style: getRegularTextStyle(
+                      fontSize: ManagerFontSize.s20,
+                      color: Colors.white,
                     ),
                   ),
-                  const PopupMenuItem(
-                    value: 'profile',
-                    child: Row(
-                      children: [
-                        Icon(Icons.person),
-                        SizedBox(width: 12),
-                        Text('الملف الشخصي'),
+                  const Spacer(),
+                  _buildProfileAvatar(controller),
+                  SizedBox(width: ManagerWidth.w8),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, color: Colors.white),
+                    onSelected: (value) => _handleMenuAction(value, controller),
+                    itemBuilder: (context) => [
+                      if (controller.isUserLoggedIn.value) ...[
+                        const PopupMenuItem(
+                          value: 'settings',
+                          child: Row(
+                            children: [
+                              Icon(Icons.settings),
+                              SizedBox(width: 12),
+                              Text('الإعدادات'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'profile',
+                          child: Row(
+                            children: [
+                              Icon(Icons.person),
+                              SizedBox(width: 12),
+                              Text('الملف الشخصي'),
+                            ],
+                          ),
+                        ),
                       ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'refresh',
-                    child: Row(
-                      children: [
-                        Icon(Icons.refresh),
-                        SizedBox(width: 12),
-                        Text('تحديث'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'logout',
-                    child: Row(
-                      children: [
-                        Icon(Icons.logout, color: Colors.red),
-                        SizedBox(width: 12),
-                        Text('تسجيل الخروج', style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
+                      const PopupMenuItem(
+                        value: 'refresh',
+                        child: Row(
+                          children: [
+                            Icon(Icons.refresh),
+                            SizedBox(width: 12),
+                            Text('تحديث'),
+                          ],
+                        ),
+                      ),
+                      if (controller.isUserLoggedIn.value)
+                        const PopupMenuItem(
+                          value: 'logout',
+                          child: Row(
+                            children: [
+                              Icon(Icons.logout, color: Colors.red),
+                              SizedBox(width: 12),
+                              Text('تسجيل الخروج', style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
+                        ),
+                      if (!controller.isUserLoggedIn.value)
+                        const PopupMenuItem(
+                          value: 'login',
+                          child: Row(
+                            children: [
+                              Icon(Icons.login, color: Colors.green),
+                              SizedBox(width: 12),
+                              Text('تسجيل الدخول', style: TextStyle(color: Colors.green)),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
+              SizedBox(height: ManagerHeight.h16),
+              _buildSearchBar(controller),
             ],
           ),
-          SizedBox(height: ManagerHeight.h16),
-          _buildSearchBar(),
-        ],
+        );
+      },
+    );
+  }
+
+  Widget _buildProfileAvatar(ChatController controller) {
+    final imageUrl = controller.currentUserImageUrl.value;
+
+    if (!controller.isUserLoggedIn.value) {
+      return GestureDetector(
+        onTap: _showLoginPrompt,
+        child: CircleAvatar(
+          radius: 20,
+          backgroundColor: Colors.white,
+          child: Icon(Icons.person_add, color: ManagerColors.primaryColor),
+        ),
+      );
+    }
+
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return CircleAvatar(
+        radius: 20,
+        backgroundColor: Colors.white,
+        child: Icon(Icons.person, color: Colors.grey),
+      );
+    }
+
+    return CloudinaryAvatar(
+      imageUrl: imageUrl,
+      fallbackText: 'User',
+      radius: 20,
+    );
+  }
+
+  Widget _buildSearchBar(ChatController controller) {
+    return Container(
+      height: ManagerHeight.h40,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TextField(
+        controller: controller.searchController,
+        onChanged: controller.onSearchChanged,
+        textAlignVertical: TextAlignVertical.center,
+        style: getRegularTextStyle(
+          fontSize: ManagerFontSize.s12,
+          color: ManagerColors.black,
+        ),
+        decoration: InputDecoration(
+          hintText: "ابحث في المحادثات...",
+          hintStyle: getRegularTextStyle(
+            fontSize: ManagerFontSize.s12,
+            color: ManagerColors.greyWithColor,
+          ),
+          prefixIcon: const Icon(
+            Icons.search,
+            color: Colors.grey,
+            size: 20,
+          ),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(
+            vertical: ManagerHeight.h10,
+            horizontal: ManagerWidth.w10,
+          ),
+        ),
+        enabled: true,
       ),
     );
   }
 
-  Widget _buildProfileAvatar() {
-    return Obx(() {
-      final imageUrl = controller.currentUserImageUrl.value;
-
-      if (!controller.isUserLoggedIn.value) {
-        return GestureDetector(
-          onTap: () {
-            // Get.to(() => LoginScreen());
-          },
-          child: CircleAvatar(
-            radius: 20,
-            backgroundColor: Colors.white,
-            child: Icon(Icons.person_add, color: ManagerColors.primaryColor),
-          ),
-        );
-      }
-
-      if (imageUrl == null || imageUrl.isEmpty) {
-        return CircleAvatar(
-          radius: 20,
-          backgroundColor: Colors.white,
-          child: Icon(Icons.person, color: Colors.grey),
-        );
-      }
-
-      return CloudinaryAvatar(
-        imageUrl: imageUrl,
-        fallbackText: 'User',
-        radius: 20,
-      );
-    });
-  }
-
-  Widget _buildSearchBar() {
-    return Obx(() {
-      return Container(
-        height: ManagerHeight.h40,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: TextField(
-          controller: controller.searchController,
-          onChanged: controller.onSearchChanged,
-          textAlignVertical: TextAlignVertical.center,
-          style: getRegularTextStyle(
-            fontSize: ManagerFontSize.s12,
-            color: ManagerColors.black,
-          ),
-          decoration: InputDecoration(
-            hintText: controller.isUserLoggedIn.value
-                ? "ابحث في المحادثات..."
-                : "سجل الدخول للبحث...",
-            hintStyle: getRegularTextStyle(
-              fontSize: ManagerFontSize.s12,
-              color: ManagerColors.greyWithColor,
-            ),
-            prefixIcon: const Icon(
-              Icons.search,
-              color: Colors.grey,
-              size: 20,
-            ),
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(
-              vertical: ManagerHeight.h10,
-              horizontal: ManagerWidth.w10,
-            ),
-          ),
-          enabled: controller.isUserLoggedIn.value,
-        ),
-      );
-    });
-  }
-
-  void _handleMenuAction(String value) {
+  void _handleMenuAction(String value, ChatController controller) {
     switch (value) {
       case 'settings':
-      // TODO: Navigate to settings
         break;
       case 'profile':
-      // TODO: Navigate to profile
         break;
       case 'refresh':
         controller.smartRefresh();
         break;
       case 'logout':
-        _showLogoutDialog();
+        _showLogoutDialog(controller);
+        break;
+      case 'login':
+        _showLoginPrompt();
         break;
     }
   }
 
-  void _showLogoutDialog() {
+  void _showLogoutDialog(ChatController controller) {
     Get.dialog(
       AlertDialog(
         title: const Text('تسجيل الخروج'),
@@ -394,7 +434,7 @@ class _HomeScreenState extends State<HomeScreen>
           TextButton(
             onPressed: () {
               Get.back();
-              _performLogout();
+              _performLogout(controller);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('تسجيل الخروج'),
@@ -404,91 +444,43 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  void _performLogout() async {
+  void _performLogout(ChatController controller) async {
     try {
       await controller.resetUser();
       AppSnackbar.success('تم تسجيل الخروج بنجاح');
-
-      Future.delayed(Duration(seconds: 1), () {
-        // Get.offAll(() => LoginScreen());
-      });
+      setState(() {});
     } catch (e) {
       AppSnackbar.error('فشل تسجيل الخروج: $e');
     }
   }
 
+  // ✅ إصلاح: استخدام GetBuilder للـ ChatList
   Widget _buildChatList() {
-    return Obx(() {
-      // 🔹 حالة عدم تسجيل الدخول
-      if (!controller.isUserLoggedIn.value) {
-        return _buildNotLoggedInState();
-      }
+    return GetBuilder<ChatController>(
+      builder: (controller) {
+        // // ✅ إضافة حالة التحميل الأولي
+        // if (controller.isInitialLoading.value) {
+        //   return const ChatListShimmer(itemCount: 6);
+        // }
 
-      // 🔹 حالة أخطاء الفهارس
-      if (controller.hasIndexError.value) {
-        return _buildIndexErrorState();
-      }
+        if (controller.isLoading.value) {
+          return const Center(child: LoadingWidget());
+        }
 
-      // 🔹 حالة التحميل
-      if (controller.isLoading.value) {
-        return const Center(child: LoadingWidget());
-      }
+        if (controller.hasIndexError.value) {
+          return _buildIndexErrorState(controller);
+        }
 
-      // 🔹 حالة لا توجد محادثات (ولكن المستخدم مسجل)
-      if (controller.filteredChats.isEmpty) {
-        return _buildNoChatsState();
-      }
+        if (controller.filteredChats.isEmpty) {
+          return _buildNoChatsState(controller);
+        }
 
-      // 🔹 حالة طبيعية - عرض المحادثات
-      return _buildChatsListView();
-    });
-  }
-
-  Widget _buildNotLoggedInState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.person_off_outlined,
-            size: 80,
-            color: Colors.grey.shade300,
-          ),
-          SizedBox(height: ManagerHeight.h16),
-          Text(
-            "غير مسجل دخول",
-            style: getBoldTextStyle(
-              fontSize: ManagerFontSize.s16,
-              color: Colors.grey.shade600,
-            ),
-          ),
-          SizedBox(height: ManagerHeight.h8),
-          Text(
-            "سجل الدخول لعرض المحادثات والمجموعات",
-            style: getRegularTextStyle(
-              fontSize: ManagerFontSize.s14,
-              color: Colors.grey.shade400,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: ManagerHeight.h20),
-          ElevatedButton.icon(
-            onPressed: () {
-              // Get.to(() => LoginScreen());
-            },
-            icon: Icon(Icons.login),
-            label: Text("تسجيل الدخول"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: ManagerColors.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
+        return _buildChatsListView(controller);
+      },
     );
   }
 
-  Widget _buildIndexErrorState() {
+  Widget _buildIndexErrorState(ChatController controller) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -527,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildNoChatsState() {
+  Widget _buildNoChatsState(ChatController controller) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -539,7 +531,9 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           SizedBox(height: ManagerHeight.h16),
           Text(
-            "لا توجد محادثات",
+            controller.isUserLoggedIn.value
+                ? "لا توجد محادثات"
+                : "مرحباً بك!",
             style: getBoldTextStyle(
               fontSize: ManagerFontSize.s16,
               color: Colors.grey.shade600,
@@ -547,7 +541,9 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           SizedBox(height: ManagerHeight.h8),
           Text(
-            "ابدأ محادثة جديدة بالضغط على زر (+)",
+            controller.isUserLoggedIn.value
+                ? "ابدأ محادثة جديدة بالضغط على زر (+)"
+                : "سجل الدخول لبدء محادثات جديدة وإنشاء مجموعات",
             style: getRegularTextStyle(
               fontSize: ManagerFontSize.s14,
               color: Colors.grey.shade400,
@@ -555,21 +551,32 @@ class _HomeScreenState extends State<HomeScreen>
             textAlign: TextAlign.center,
           ),
           SizedBox(height: ManagerHeight.h20),
-          ElevatedButton.icon(
-            onPressed: _showAddMenu,
-            icon: Icon(Icons.add),
-            label: Text("بدء محادثة جديدة"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: ManagerColors.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-          ),
+          if (controller.isUserLoggedIn.value)
+            ElevatedButton.icon(
+              onPressed: _showAddMenu,
+              icon: Icon(Icons.add),
+              label: Text("بدء محادثة جديدة"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ManagerColors.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+            )
+          // else
+          //   ElevatedButton.icon(
+          //     onPressed: _showLoginPrompt,
+          //     icon: Icon(Icons.login),
+          //     label: Text("تسجيل الدخول"),
+          //     style: ElevatedButton.styleFrom(
+          //       backgroundColor: ManagerColors.primaryColor,
+          //       foregroundColor: Colors.white,
+          //     ),
+          //   ),
         ],
       ),
     );
   }
 
-  Widget _buildChatsListView() {
+  Widget _buildChatsListView(ChatController controller) {
     return RefreshIndicator(
       onRefresh: () async {
         await controller.smartRefresh();
@@ -578,6 +585,11 @@ class _HomeScreenState extends State<HomeScreen>
         itemCount: controller.filteredChats.length,
         itemBuilder: (context, index) {
           final chat = controller.filteredChats[index];
+
+          if (!chat.isUserParticipant && controller.isUserLoggedIn.value) {
+            return SizedBox.shrink();
+          }
+
           return Dismissible(
             key: Key(chat.id),
             direction: DismissDirection.endToStart,
@@ -592,15 +604,15 @@ class _HomeScreenState extends State<HomeScreen>
               controller.deleteChat(chat.id, chat.isGroup);
             },
             child: chat.isGroup
-                ? _buildGroupTile(chat)
-                : _buildPrivateTile(chat),
+                ? _buildGroupTile(chat, controller)
+                : _buildPrivateTile(chat, controller),
           );
         },
       ),
     );
   }
 
-  Future<bool> _confirmDelete(chat) async {
+  Future<bool> _confirmDelete(ChatModel chat) async {
     return await Get.dialog<bool>(
       AlertDialog(
         title: const Text('حذف المحادثة'),
@@ -624,11 +636,15 @@ class _HomeScreenState extends State<HomeScreen>
     ) ?? false;
   }
 
-  Widget _buildPrivateTile(chat) {
+  Widget _buildPrivateTile(ChatModel chat, ChatController controller) {
     return ListTile(
       onTap: () {
-        controller.markChatAsRead(chat.id, false);
-        Get.snackbar('قريباً', 'المحادثات الخاصة قيد التطوير');
+        if (controller.isUserLoggedIn.value) {
+          controller.markChatAsRead(chat.id, false);
+          Get.snackbar('قريباً', 'المحادثات الخاصة قيد التطوير');
+        } else {
+          _showLoginPrompt();
+        }
       },
       contentPadding: EdgeInsets.symmetric(
         horizontal: ManagerWidth.w16,
@@ -656,7 +672,7 @@ class _HomeScreenState extends State<HomeScreen>
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (chat.unreadCount > 0) ...[
+          if (chat.unreadCount > 0 && controller.isUserLoggedIn.value) ...[
             SizedBox(width: ManagerWidth.w8),
             Container(
               padding: EdgeInsets.symmetric(
@@ -697,16 +713,20 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildGroupTile(chat) {
+  Widget _buildGroupTile(ChatModel chat, ChatController controller) {
     return ListTile(
       onTap: () {
-        controller.markChatAsRead(chat.id, true);
-        Get.to(() => ChatGroupScreen(
-          groupId: chat.id,
-          groupName: chat.name,
-          groupImage: chat.imageUrl,
-          participantsCount: chat.membersCount.toString(),
-        ));
+        if (controller.isUserLoggedIn.value) {
+          controller.markChatAsRead(chat.id, true);
+          Get.to(() => ChatGroupScreen(
+            groupId: chat.id,
+            groupName: chat.name,
+            groupImage: chat.imageUrl,
+            participantsCount: chat.membersCount.toString(),
+          ));
+        } else {
+          _showLoginPrompt();
+        }
       },
       contentPadding: EdgeInsets.symmetric(
         horizontal: ManagerWidth.w16,
@@ -754,7 +774,7 @@ class _HomeScreenState extends State<HomeScreen>
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (chat.unreadCount > 0) ...[
+          if (chat.unreadCount > 0 && controller.isUserLoggedIn.value) ...[
             SizedBox(width: ManagerWidth.w8),
             Container(
               padding: EdgeInsets.symmetric(

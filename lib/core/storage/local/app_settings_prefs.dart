@@ -192,4 +192,26 @@ class AppSettingsPrefs {
   String getToken() {
     return _sharedPreferences.getString(SharedPrefsConstants.token).onNull();
   }
+
+  // في ملف app_settings_prefs.dart
+  Future<void> cacheUserData({
+    required String userId,
+    required String name,
+    required String phone,
+  }) async {
+    try {
+      setUserLoggedIn();
+      setUserId(userId);
+      setUserName(name);
+      setUserPhone(phone);
+
+      // حفظ فوري
+      await _sharedPreferences.commit();
+
+      print('✅ User data cached: $userId, $name');
+    } catch (e) {
+      print('❌ Error caching user data: $e');
+      rethrow;
+    }
+  }
 }

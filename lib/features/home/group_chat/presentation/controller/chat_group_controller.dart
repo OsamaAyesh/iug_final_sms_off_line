@@ -7,10 +7,9 @@ import 'package:app_mobile/features/home/group_chat/domain/models/message_status
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // أضف هذا للـ dependencies
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../../core/storage/local/app_settings_prefs.dart';
 import '../../../../../core/util/snack_bar.dart';
-import '../../../../auth/presentation/controller/auth_controller.dart';
 import '../../data/repository/chat_group_repository.dart';
 import '../../data/request/send_message_request.dart';
 
@@ -43,6 +42,9 @@ class ChatGroupController extends GetxController {
   // Stream subscriptions
   StreamSubscription? _messagesSubscription;
 
+  // ✅ إضافة خاصية mounted للتحكم في حالة الـ Controller
+  bool _mounted = true;
+
   // ================================
   // ✅ INITIALIZATION
   // ================================
@@ -55,6 +57,7 @@ class ChatGroupController extends GetxController {
 
   @override
   void onClose() {
+    _mounted = false;
     textController.dispose();
     _messagesSubscription?.cancel();
     super.onClose();
@@ -68,34 +71,6 @@ class ChatGroupController extends GetxController {
     currentUserId = await _getCurrentUserId();
   }
 
-  /// ✅ جلب الـ userId من SharedPreferences أو النظام الخاص بك
-  // Future<String> _getCurrentUserId() async {
-  //   // الطريقة 1: من SharedPreferences
-  //   try {
-  //     final prefs = await SharedPreferences.getInstance();
-  //     final userId = prefs.getString('user_id') ?? prefs.getString('userId');
-  //
-  //     if (userId != null && userId.isNotEmpty) {
-  //       currentUserId = userId;
-  //       return userId;
-  //     }
-  //   } catch (e) {
-  //     print('Error reading from SharedPreferences: $e');
-  //   }
-  //
-  //   // الطريقة 2: من GetX (إذا كنت تحفظه في GetX Controller)
-  //   // مثال:
-  //   // final authController = Get.find<AuthController>();
-  //   // if (authController.currentUser.value != null) {
-  //   //   currentUserId = authController.currentUser.value!.id;
-  //   //   return currentUserId;
-  //   // }
-  //
-  //   // الطريقة 3: Fallback - استخدم الـ default
-  //   // ⚠️ استبدل هذا بالطريقة الصحيحة في نظامك
-  //   return '567450057'; // Default for development
-  // }
-// في ChatGroupController
   Future<String> _getCurrentUserId() async {
     try {
       // 🔹 تهيئة AppSettingsPrefs
@@ -130,7 +105,9 @@ class ChatGroupController extends GetxController {
     } catch (e) {
       return false;
     }
-  }  /// ✅ تعيين الـ userId يدوياً (استخدمها عند تسجيل الدخول)
+  }
+
+  /// ✅ تعيين الـ userId يدوياً (استخدمها عند تسجيل الدخول)
   Future<void> setCurrentUser(String userId) async {
     currentUserId = userId;
 
@@ -154,9 +131,10 @@ class ChatGroupController extends GetxController {
     // Cancel previous subscription
     _messagesSubscription?.cancel();
 
-    // Listen to messages
+    // Listen to messages with error handling
     _messagesSubscription = repository.getMessages(groupId).listen(
           (data) {
+        print('✅ Loaded ${data.length} messages for group $groupId');
         messages.assignAll(data);
         isLoading.value = false;
 
@@ -164,10 +142,18 @@ class ChatGroupController extends GetxController {
         _autoMarkAsDelivered(groupId);
       },
       onError: (error) {
-        print('Error listening to messages: $error');
+        print('❌ Error listening to messages: $error');
         isLoading.value = false;
         AppSnackbar.error('فشل تحميل الرسائل');
+
+        // ✅ إعادة المحاولة بعد فترة - باستخدام _mounted بدلاً من mounted
+        Future.delayed(Duration(seconds: 3), () {
+          if (_mounted) {
+            listenToMessages(groupId);
+          }
+        });
       },
+      cancelOnError: false, // ✅ عدم إلغاء الاشتراك عند الخطأ
     );
 
     // Load group info

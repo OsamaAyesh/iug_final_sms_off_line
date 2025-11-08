@@ -18,7 +18,7 @@ class ChatController extends GetxController {
   final searchController = TextEditingController();
 
   // States
-  final isLoading = false.obs;
+  RxBool isLoading = false.obs;
   final selectedTabIndex = 0.obs;
   final hasData = false.obs;
   final hasIndexError = false.obs;
@@ -37,6 +37,8 @@ class ChatController extends GetxController {
   StreamSubscription? _groupChatsSubscription;
   StreamSubscription? _privateChatsSubscription;
   StreamSubscription? _userSubscription;
+  final RxList<ChatModel> privateChats = <ChatModel>[].obs;
+  final RxList<ChatModel> groupChats = <ChatModel>[].obs;
 
   @override
   void onInit() {
@@ -44,9 +46,8 @@ class ChatController extends GetxController {
     print('🚀 ChatController initialized');
 
     _initController().then((_) {
-      if (isUserLoggedIn.value) {
-        _listenToChats();
-      }
+      // ✅ دائماً نستمع للمحادثات حتى لو لم يكن هناك محادثات حالياً
+      _listenToChats();
     });
 
     searchController.addListener(() {
@@ -64,7 +65,7 @@ class ChatController extends GetxController {
   }
 
   // ================================
-  // 🔸 تهيئة الكونترولر
+  // 🔸 تهيئة الكونترولر - معدّل
   // ================================
 
   Future<void> _initController() async {
@@ -84,60 +85,24 @@ class ChatController extends GetxController {
       currentUserId = _prefs.getUserId() ?? '';
 
       if (currentUserId.isEmpty) {
-        print('❌ No user ID found');
+        print('👤 No user ID found - user might be logged out');
         isUserLoggedIn.value = false;
-        _handleNoUser();
+        // ✅ لا نمنع المستخدم من رؤية الواجهة، فقط نخبره أنه غير مسجل
         return;
       }
 
       print('✅ Current user ID: $currentUserId');
       isUserLoggedIn.value = true;
-      _loadCurrentUserData();
+      _loadCurrentUserData(); // ✅ تمت إضافة هذه الدالة
 
     } catch (e) {
       print('❌ Error initializing current user: $e');
       isUserLoggedIn.value = false;
-      _handleNoUser();
     }
   }
 
   // ================================
-  // 🔸 معالجة حالة عدم وجود مستخدم
-  // ================================
-
-  void _handleNoUser() {
-    print('👤 No user detected');
-
-    Future.delayed(Duration(milliseconds: 500), () {
-      if (Get.isDialogOpen ?? false) Get.back();
-
-      AppSnackbar.warning(
-        'يجب تسجيل الدخول أولاً',
-      );
-
-      _clearUserDataAndRedirect();
-    });
-  }
-
-  Future<void> _clearUserDataAndRedirect() async {
-    try {
-      await _prefs.clearUserData();
-      await resetUser();
-
-      Future.delayed(Duration(seconds: 2), () {
-        if (Get.currentRoute != '/login') {
-          // Get.offAllNamed('/login');
-          print('📍 Should redirect to login screen');
-        }
-      });
-
-    } catch (e) {
-      print('❌ Error clearing user data: $e');
-    }
-  }
-
-  // ================================
-  // 🔸 تحميل بيانات المستخدم الحالي
+  // 🔸 دالة جديدة: تحميل بيانات المستخدم الحالي
   // ================================
 
   Future<void> _loadCurrentUserData() async {
@@ -169,64 +134,132 @@ class ChatController extends GetxController {
   }
 
   // ================================
-  // 🔸 الاستماع للمحادثات
+  // 🔸 الاستماع للمحادثات - معدّل بالكامل
   // ================================
 
   void _listenToChats() {
-    if (!isUserLoggedIn.value) {
-      print('❌ Cannot listen to chats - user not logged in');
-      isLoading.value = false;
-      hasData.value = false;
-      return;
-    }
+    // ✅ دائماً نحاول جلب البيانات حتى لو لم يكن المستخدم مسجلاً
+    // لأن المستخدم قد يكون مسجلاً ولكن ليس لديه محادثات
 
     isLoading.value = true;
     hasIndexError.value = false;
-    print('👂 Listening to real-time chats for user: $currentUserId');
+
+    print('👂 Listening to real-time chats for user: ${currentUserId.isEmpty ? 'unknown' : currentUserId}');
 
     // محاولة الاستماع للمجموعات
     _tryGroupsListener();
 
     // محاولة الاستماع للمحادثات الخاصة
     _tryPrivateChatsListener();
+
+    // ✅ إذا لم يكن هناك مستخدم، نوقف التحميل بعد فترة
+    if (!isUserLoggedIn.value) {
+      Future.delayed(Duration(seconds: 2), () {
+        isLoading.value = false;
+      });
+    }
   }
 
   void _tryGroupsListener() {
-    _groupChatsSubscription = _firestore
-        .collection('groups')
-        .where('participants', arrayContains: currentUserId)
-        .orderBy('lastMessageTime', descending: true)
-        .snapshots()
-        .listen(
-          (snapshot) {
-        print('📥 Real-time groups update: ${snapshot.docs.length} groups');
-        hasIndexError.value = false;
-        _updateGroupChats(snapshot.docs);
-      },
-      onError: (error) {
-        print('❌ Error in groups listener: $error');
-        _handleIndexError(error, 'groups');
-      },
-    );
+    if (currentUserId.isEmpty) {
+      print('ℹ️ No user ID for groups - listening without filter');
+      _groupChatsSubscription = _firestore
+          .collection('groups')
+          .orderBy('lastMessageTime', descending: true)
+          .limit(10) // ✅ تحديد عدد لتجنب الأخطاء
+          .snapshots()
+          .listen(
+            (snapshot) {
+          print('📥 Real-time groups update: ${snapshot.docs.length} groups');
+          hasIndexError.value = false;
+          _updateGroupChats(snapshot.docs);
+        },
+        onError: (error) {
+          print('❌ Error in groups listener: $error');
+          _handleGroupsError(error); // ✅ تمت إضافة هذه الدالة
+        },
+      );
+    } else {
+      _groupChatsSubscription = _firestore
+          .collection('groups')
+          .where('participants', arrayContains: currentUserId)
+          .orderBy('lastMessageTime', descending: true)
+          .snapshots()
+          .listen(
+            (snapshot) {
+          print('📥 Real-time groups update: ${snapshot.docs.length} groups');
+          hasIndexError.value = false;
+          _updateGroupChats(snapshot.docs);
+        },
+        onError: (error) {
+          print('❌ Error in groups listener: $error');
+          _handleIndexError(error, 'groups');
+        },
+      );
+    }
   }
 
   void _tryPrivateChatsListener() {
-    _privateChatsSubscription = _firestore
-        .collection('chat_rooms')
-        .where('participants', arrayContains: currentUserId)
-        .orderBy('lastMessageTime', descending: true)
-        .snapshots()
-        .listen(
-          (snapshot) {
-        print('📥 Real-time private chats update: ${snapshot.docs.length} chats');
-        hasIndexError.value = false;
-        _updatePrivateChats(snapshot.docs);
-      },
-      onError: (error) {
-        print('❌ Error in private chats listener: $error');
-        _handleIndexError(error, 'chat_rooms');
-      },
-    );
+    if (currentUserId.isEmpty) {
+      print('ℹ️ No user ID for private chats - listening without filter');
+      _privateChatsSubscription = _firestore
+          .collection('chat_rooms')
+          .orderBy('lastMessageTime', descending: true)
+          .limit(10) // ✅ تحديد عدد لتجنب الأخطاء
+          .snapshots()
+          .listen(
+            (snapshot) {
+          print('📥 Real-time private chats update: ${snapshot.docs.length} chats');
+          hasIndexError.value = false;
+          _updatePrivateChats(snapshot.docs);
+        },
+        onError: (error) {
+          print('❌ Error in private chats listener: $error');
+          _handlePrivateChatsError(error); // ✅ تمت إضافة هذه الدالة
+        },
+      );
+    } else {
+      _privateChatsSubscription = _firestore
+          .collection('chat_rooms')
+          .where('participants', arrayContains: currentUserId)
+          .orderBy('lastMessageTime', descending: true)
+          .snapshots()
+          .listen(
+            (snapshot) {
+          print('📥 Real-time private chats update: ${snapshot.docs.length} chats');
+          hasIndexError.value = false;
+          _updatePrivateChats(snapshot.docs);
+        },
+        onError: (error) {
+          print('❌ Error in private chats listener: $error');
+          _handleIndexError(error, 'chat_rooms');
+        },
+      );
+    }
+  }
+
+  // ================================
+  // 🔸 دوال جديدة: معالجة الأخطاء
+  // ================================
+
+  void _handleGroupsError(dynamic error) {
+    isLoading.value = false;
+    hasIndexError.value = true;
+
+    print('🔧 Groups error detected: $error');
+
+    // ✅ محاولة استعلام أبسط
+    _trySimpleGroupsQuery();
+  }
+
+  void _handlePrivateChatsError(dynamic error) {
+    isLoading.value = false;
+    hasIndexError.value = true;
+
+    print('🔧 Private chats error detected: $error');
+
+    // ✅ محاولة استعلام أبسط
+    _trySimplePrivateChatsQuery();
   }
 
   void _handleIndexError(dynamic error, String collection) {
@@ -238,52 +271,78 @@ class ChatController extends GetxController {
     if (errorStr.contains('index') || errorStr.contains('FAILED_PRECONDITION')) {
       print('🔧 Index error detected for $collection');
 
-      Future.delayed(Duration(milliseconds: 500), () {
-        AppSnackbar.loading(
-          'جاري تحميل المحادثات...',
-        );
-      });
-
-      _trySimpleQuery(collection);
+      if (collection == 'groups') {
+        _trySimpleGroupsQuery();
+      } else {
+        _trySimplePrivateChatsQuery();
+      }
     }
   }
 
-  void _trySimpleQuery(String collection) {
-    print('🔄 Trying simple query for $collection');
+  void _trySimpleGroupsQuery() {
+    print('🔄 Trying simple groups query');
 
     try {
-      _firestore
-          .collection(collection)
-          .where('participants', arrayContains: currentUserId)
-          .get()
-          .then((snapshot) {
-        print('✅ Simple query successful: ${snapshot.docs.length} documents');
-
-        if (collection == 'groups') {
+      if (currentUserId.isEmpty) {
+        _firestore
+            .collection('groups')
+            .limit(20)
+            .get()
+            .then((snapshot) {
+          print('✅ Simple groups query successful: ${snapshot.docs.length} documents');
           _updateGroupChats(snapshot.docs);
-        } else {
-          _updatePrivateChats(snapshot.docs);
-        }
-      }).catchError((error) {
-        print('❌ Simple query also failed: $error');
-        _handleNoChatsAvailable();
-      });
+        });
+      } else {
+        _firestore
+            .collection('groups')
+            .where('participants', arrayContains: currentUserId)
+            .get()
+            .then((snapshot) {
+          print('✅ Simple groups query successful: ${snapshot.docs.length} documents');
+          _updateGroupChats(snapshot.docs);
+        });
+      }
     } catch (e) {
-      print('❌ Error in simple query: $e');
+      print('❌ Simple groups query also failed: $e');
+      _handleNoChatsAvailable();
+    }
+  }
+
+  void _trySimplePrivateChatsQuery() {
+    print('🔄 Trying simple private chats query');
+
+    try {
+      if (currentUserId.isEmpty) {
+        _firestore
+            .collection('chat_rooms')
+            .limit(20)
+            .get()
+            .then((snapshot) {
+          print('✅ Simple private chats query successful: ${snapshot.docs.length} documents');
+          _updatePrivateChats(snapshot.docs);
+        });
+      } else {
+        _firestore
+            .collection('chat_rooms')
+            .where('participants', arrayContains: currentUserId)
+            .get()
+            .then((snapshot) {
+          print('✅ Simple private chats query successful: ${snapshot.docs.length} documents');
+          _updatePrivateChats(snapshot.docs);
+        });
+      }
+    } catch (e) {
+      print('❌ Simple private chats query also failed: $e');
       _handleNoChatsAvailable();
     }
   }
 
   void _handleNoChatsAvailable() {
-    print('💬 No chats available for user $currentUserId');
+    print('💬 No chats available for user ${currentUserId.isEmpty ? 'unknown' : currentUserId}');
     hasData.value = false;
     isLoading.value = false;
 
-    Future.delayed(Duration(milliseconds: 500), () {
-      AppSnackbar.loading(
-        'لا توجد محادثات حالياً. ابدأ محادثة جديدة!',
-      );
-    });
+    // ✅ لا نعرض رسالة خطأ، فقط نوقف التحميل
   }
 
   void _updateGroupChats(List<QueryDocumentSnapshot> docs) {
@@ -293,6 +352,9 @@ class ChatController extends GetxController {
       try {
         final data = doc.data() as Map<String, dynamic>;
         final participants = List<String>.from(data['participants'] ?? []);
+
+        // ✅ التحقق مما إذا كان المستخدم الحالي عضو في المجموعة
+        final isUserInGroup = currentUserId.isEmpty ? false : participants.contains(currentUserId);
 
         final chat = ChatModel(
           id: doc.id,
@@ -304,6 +366,7 @@ class ChatController extends GetxController {
           membersCount: participants.length,
           unreadCount: _calculateUnreadCount(data['unreadCount']),
           lastMessageTime: data['lastMessageTime'],
+          isUserParticipant: isUserInGroup, // ✅ إضافة هذا الحقل
         );
 
         groupChats.add(chat);
@@ -313,7 +376,7 @@ class ChatController extends GetxController {
     }
 
     _updateChatsList(groupChats, true);
-    print('✅ Updated ${groupChats.length} groups for user $currentUserId');
+    print('✅ Updated ${groupChats.length} groups');
   }
 
   void _updatePrivateChats(List<QueryDocumentSnapshot> docs) {
@@ -323,6 +386,9 @@ class ChatController extends GetxController {
       try {
         final data = doc.data() as Map<String, dynamic>;
         final participants = List<String>.from(data['participants'] ?? []);
+
+        // ✅ التحقق مما إذا كان المستخدم الحالي عضو في المحادثة
+        final isUserInChat = currentUserId.isEmpty ? false : participants.contains(currentUserId);
 
         final chat = ChatModel(
           id: doc.id,
@@ -334,6 +400,7 @@ class ChatController extends GetxController {
           membersCount: participants.length,
           unreadCount: _calculateUnreadCount(data['unreadCount']),
           lastMessageTime: data['lastMessageTime'] ?? data['timestamp'],
+          isUserParticipant: isUserInChat, // ✅ إضافة هذا الحقل
         );
 
         privateChats.add(chat);
@@ -343,7 +410,7 @@ class ChatController extends GetxController {
     }
 
     _updateChatsList(privateChats, false);
-    print('✅ Updated ${privateChats.length} private chats for user $currentUserId');
+    print('✅ Updated ${privateChats.length} private chats');
   }
 
   void _updateChatsList(List<ChatModel> newChats, bool areGroups) {
@@ -360,7 +427,7 @@ class ChatController extends GetxController {
   }
 
   int _calculateUnreadCount(dynamic unreadData) {
-    if (unreadData == null) return 0;
+    if (unreadData == null || currentUserId.isEmpty) return 0;
 
     try {
       if (unreadData is Map<String, dynamic>) {
@@ -374,7 +441,7 @@ class ChatController extends GetxController {
   }
 
   // ================================
-  // 🔸 Sorting & Filtering
+  // 🔸 Sorting & Filtering - معدّل
   // ================================
 
   void _sortChats() {
@@ -419,6 +486,11 @@ class ChatController extends GetxController {
         break;
     }
 
+    // ✅ تصفية حسب مشاركة المستخدم إذا كان مسجلاً
+    if (isUserLoggedIn.value) {
+      filtered = filtered.where((chat) => chat.isUserParticipant).toList();
+    }
+
     if (searchController.text.isNotEmpty) {
       _filterChats(searchController.text, filtered);
     } else {
@@ -446,16 +518,27 @@ class ChatController extends GetxController {
   }
 
   List<ChatModel> _getCurrentTabChats() {
+    List<ChatModel> chats;
     switch (selectedTabIndex.value) {
       case 0:
-        return allChats;
+        chats = allChats;
+        break;
       case 1:
-        return allChats.where((chat) => !chat.isGroup).toList();
+        chats = allChats.where((chat) => !chat.isGroup).toList();
+        break;
       case 2:
-        return allChats.where((chat) => chat.isGroup).toList();
+        chats = allChats.where((chat) => chat.isGroup).toList();
+        break;
       default:
-        return allChats;
+        chats = allChats;
     }
+
+    // ✅ تصفية حسب مشاركة المستخدم إذا كان مسجلاً
+    if (isUserLoggedIn.value) {
+      chats = chats.where((chat) => chat.isUserParticipant).toList();
+    }
+
+    return chats;
   }
 
   void onSearchChanged(String query) {
@@ -494,13 +577,13 @@ class ChatController extends GetxController {
   }
 
   // ================================
-  // 🔸 Mark as Read
+  // 🔸 Mark as Read - معدّل
   // ================================
 
   Future<void> markChatAsRead(String chatId, bool isGroup) async {
     try {
       if (currentUserId.isEmpty) {
-        print('❌ Cannot mark as read - user not logged in');
+        print('ℹ️ Cannot mark as read - user not logged in');
         return;
       }
 
@@ -515,7 +598,7 @@ class ChatController extends GetxController {
   }
 
   // ================================
-  // 🔸 Delete Chat
+  // 🔸 Delete Chat - معدّل
   // ================================
 
   Future<void> deleteChat(String chatId, bool isGroup) async {
@@ -547,15 +630,11 @@ class ChatController extends GetxController {
   }
 
   // ================================
-  // 🔸 Refresh & Utilities
+  // 🔸 Refresh & Utilities - معدّل
   // ================================
 
   Future<void> refresh() async {
-    print('🔄 Refreshing chats for user: $currentUserId');
-
-    if (currentUserId.isEmpty) {
-      await _initCurrentUser();
-    }
+    print('🔄 Refreshing chats for user: ${currentUserId.isEmpty ? 'unknown' : currentUserId}');
 
     isLoading.value = true;
 
@@ -567,24 +646,130 @@ class ChatController extends GetxController {
     AppSnackbar.success('تم تحديث المحادثات');
   }
 
+  // Future<bool> checkUserLoggedIn() async {
+  //   try {
+  //     if (_prefs == null) {
+  //       print('❌ _prefs is not initialized');
+  //       return false;
+  //     }
+  //
+  //     // ✅ التحقق من AppSettingsPrefs أولاً
+  //     final isLoggedIn = _prefs!.getUserLoggedIn();
+  //     final userId = _prefs!.getUserId();
+  //     final hasValidUserId = userId != null && userId.isNotEmpty;
+  //
+  //     if (isLoggedIn && hasValidUserId) {
+  //       print('✅ User is logged in with ID: $userId');
+  //       currentUserId = userId;
+  //       currentUserName.value = _prefs!.getUserName() ?? 'مستخدم';
+  //       return true;
+  //     }
+  //
+  //     // ✅ البحث في SharedPreferences مباشرة
+  //     final sharedPrefs = await SharedPreferences.getInstance();
+  //     final alternativeUserId = sharedPrefs.getString('user_id') ??
+  //         sharedPrefs.getString('userId');
+  //
+  //     if (alternativeUserId != null && alternativeUserId.isNotEmpty) {
+  //       print('✅ Found user in alternative storage: $alternativeUserId');
+  //
+  //       // ✅ استخدام الدوال الفردية بدلاً من cacheUserData
+  //       await _cacheUserDataManually(
+  //         userId: alternativeUserId,
+  //         name: sharedPrefs.getString('user_name') ?? 'مستخدم',
+  //         phone: sharedPrefs.getString('phone') ?? '',
+  //       );
+  //
+  //       currentUserId = alternativeUserId;
+  //       currentUserName.value = sharedPrefs.getString('user_name') ?? 'مستخدم';
+  //       currentUserImageUrl.value = sharedPrefs.getString('user_image') ?? '';
+  //
+  //       return true;
+  //     }
+  //
+  //     print('❌ No logged in user found');
+  //     return false;
+  //
+  //   } catch (e) {
+  //     print('❌ Error in checkUserLoggedIn: $e');
+  //     return false;
+  //   }
+  // }
   Future<bool> checkUserLoggedIn() async {
     try {
-      final isLoggedIn = _prefs.getUserLoggedIn();
-      final hasUserId = _prefs.getUserId() != null && _prefs.getUserId()!.isNotEmpty;
+      if (_prefs == null) return false;
 
-      return isLoggedIn && hasUserId;
+      // المحاولة الأولى: من AppSettingsPrefs
+      if (_prefs!.getUserLoggedIn()) {
+        final userId = _prefs!.getUserId();
+        if (userId != null && userId.isNotEmpty) {
+          currentUserId = userId;
+          currentUserName.value = _prefs!.getUserName() ?? 'مستخدم';
+          print('✅ User logged in: $userId');
+          return true;
+        }
+      }
+
+      // المحاولة الثانية: من SharedPreferences مباشرة
+      final sharedPrefs = await SharedPreferences.getInstance();
+      final userId = sharedPrefs.getString('user_id') ??
+          sharedPrefs.getString('userId');
+
+      if (userId != null && userId.isNotEmpty) {
+        // تحديث AppSettingsPrefs
+        _prefs.setUserLoggedIn();
+        _prefs.setUserId(userId);
+
+        currentUserId = userId;
+        currentUserName.value = sharedPrefs.getString('user_name') ?? 'مستخدم';
+
+        print('✅ User found in shared prefs: $userId');
+        return true;
+      }
+
+      return false;
+
     } catch (e) {
+      print('❌ Error in checkUserLoggedIn: $e');
       return false;
     }
   }
 
   Map<String, String?> getCurrentUserInfo() {
     return {
-      'user_id': currentUserId,
-      'user_name': currentUserName.value,
-      'user_image': currentUserImageUrl.value,
+      'user_id': currentUserId.isNotEmpty ? currentUserId : null,
+      'user_name': currentUserName.value!.isNotEmpty ? currentUserName.value : null,
+      'user_image': currentUserImageUrl.value!.isNotEmpty ? currentUserImageUrl.value : null,
     };
   }
+// ✅ دالة مساعدة بديلة لـ cacheUserData
+  Future<void> _cacheUserDataManually({
+    required String userId,
+    required String name,
+    required String phone,
+  }) async {
+    try {
+      _prefs.setUserLoggedIn();
+      _prefs.setUserId(userId);
+      _prefs.setUserName(name);
+      _prefs.setUserPhone(phone);
+
+      // تأكيد الحفظ
+      final sharedPrefs = await SharedPreferences.getInstance();
+      await sharedPrefs.reload();
+
+      print('✅ User data cached manually: $userId');
+    } catch (e) {
+      print('❌ Error in _cacheUserDataManually: $e');
+    }
+  }
+  // Map<String, String?> getCurrentUserInfo() {
+  //   return {
+  //     'user_id': currentUserId,
+  //     'user_name': currentUserName.value,
+  //     'user_image': currentUserImageUrl.value,
+  //   };
+  // }
 
   Future<void> resetUser() async {
     currentUserId = '';
@@ -605,21 +790,25 @@ class ChatController extends GetxController {
   Future<void> smartRefresh() async {
     print('🔄 Smart refresh initiated');
 
-    if (!isUserLoggedIn.value) {
-      _handleNoUser();
-      return;
-    }
-
     if (hasIndexError.value) {
       _listenToChats();
     } else {
       refresh();
     }
   }
+
+  // ================================
+  // 🔸 دالة جديدة: تحديث حالة المستخدم
+  // ================================
+
+  Future<void> updateUserStatus() async {
+    await _initCurrentUser();
+    _listenToChats(); // إعادة تحميل المحادثات مع الفلتر الجديد
+  }
 }
 
 // ================================
-// 🔸 Chat Model
+// 🔸 Chat Model - معدّل
 // ================================
 
 class ChatModel {
@@ -633,6 +822,7 @@ class ChatModel {
   final int unreadCount;
   final dynamic lastMessageTime;
   final String? otherUserId;
+  final bool isUserParticipant; // ✅ حقل جديد
 
   ChatModel({
     required this.id,
@@ -645,10 +835,11 @@ class ChatModel {
     this.unreadCount = 0,
     this.lastMessageTime,
     this.otherUserId,
+    this.isUserParticipant = true, // ✅ قيمة افتراضية
   });
 
   @override
   String toString() {
-    return 'ChatModel{id: $id, name: $name, isGroup: $isGroup, members: $membersCount}';
+    return 'ChatModel{id: $id, name: $name, isGroup: $isGroup, isUserParticipant: $isUserParticipant}';
   }
 }

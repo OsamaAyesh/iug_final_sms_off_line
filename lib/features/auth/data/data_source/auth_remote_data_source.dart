@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:app_mobile/constants/constants/constants.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
@@ -8,7 +9,7 @@ import '../response/send_otp_response.dart';
 
 class AuthRemoteDataSource {
   final String _apiKey = "c735413907079a974249eaa7fb107ebd";
-  final String _sender = "TweetTest";
+  final String _sender = Constants.senderName;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final Map<String, String> _otpStorage = {};
