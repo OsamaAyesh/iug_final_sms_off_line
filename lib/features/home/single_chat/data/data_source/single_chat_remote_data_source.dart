@@ -17,26 +17,40 @@ class SingleChatRemoteDataSource {
   // ================================
   // ✅ 1. CREATE OR GET CHAT ID
   // ================================
+// ✅ الإصدار المعدل - يمنع إنشاء شات مكرر
   Future<String> getOrCreateChatId(String user1Id, String user2Id) async {
     try {
-      // إنشاء ID ثابت للمحادثة
+      // إنشاء ID موحد دائمًا
       final participants = [user1Id, user2Id]..sort();
-      final chatId = participants.join('_');
+      final chatId = 'individual_${participants[0]}_${participants[1]}'; // ✅ prefix ثابت
 
       final chatDoc = await _firestore.collection('chats').doc(chatId).get();
 
+      // إنشاء الوثيقة فقط إن لم تكن موجودة
       if (!chatDoc.exists) {
         await _firestore.collection('chats').doc(chatId).set({
+          'id': chatId,
+          'type': 'individual',
           'participants': participants,
           'createdAt': FieldValue.serverTimestamp(),
-          'lastMessage': '',
-          'lastMessageTime': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
+          'lastMessage': '',
+          'lastMessageSender': '',
+          'lastMessageTime': FieldValue.serverTimestamp(),
+          'unreadCount': {
+            participants[0]: 0,
+            participants[1]: 0,
+          },
         });
+
+        print('✅ تم إنشاء محادثة جديدة: $chatId');
+      } else {
+        print('⚠️ تم العثور على محادثة موجودة مسبقًا: $chatId');
       }
 
       return chatId;
     } catch (e) {
+      print('❌ خطأ في getOrCreateChatId: $e');
       throw Exception('فشل في إنشاء/جلب المحادثة: $e');
     }
   }
@@ -45,16 +59,29 @@ class SingleChatRemoteDataSource {
   // ✅ 2. STREAM MESSAGES (Real-time)
   // ================================
   Stream<List<SingleMessageResponse>> getMessages(String chatId) {
-    return _firestore
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .orderBy('timestamp', descending: false)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => SingleMessageResponse.fromJson(doc.data(), doc.id))
-        .toList());
+    try {
+      return _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .orderBy('timestamp', descending: false)
+          .snapshots()
+          .map((snapshot) {
+        return snapshot.docs.map((doc) {
+          final data = doc.data();
+          // ✅ fallback لتجنب null
+          if (!data.containsKey('timestamp')) {
+            data['timestamp'] = Timestamp.now();
+          }
+          return SingleMessageResponse.fromJson(data, doc.id);
+        }).toList();
+      });
+    } catch (e) {
+      print('❌ Error in getMessages: $e');
+      rethrow;
+    }
   }
+
 
   // ================================
   // ✅ 3. SEND MESSAGE (Optimistic UI)

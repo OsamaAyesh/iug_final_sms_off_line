@@ -1,14 +1,16 @@
-// المسار: lib/features/home/add_chat/presentation/pages/add_chat_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:app_mobile/core/storage/local/app_settings_prefs.dart';
 import 'package:app_mobile/core/resources/manager_colors.dart';
 import 'package:app_mobile/core/resources/manager_font_size.dart';
 import 'package:app_mobile/core/resources/manager_height.dart';
 import 'package:app_mobile/core/resources/manager_styles.dart';
 import 'package:app_mobile/core/resources/manager_width.dart';
+import 'package:app_mobile/features/home/single_chat/presentation/pages/single_chat_screen.dart';
+
+import '../../../../../constants/di/dependency_injection.dart' show instance;
 
 class AddChatScreen extends StatefulWidget {
   const AddChatScreen({super.key});
@@ -23,6 +25,32 @@ class _AddChatScreenState extends State<AddChatScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
+  final AppSettingsPrefs _prefs = instance<AppSettingsPrefs>();
+
+  String get currentUserId => _prefs.getUserId();
+  String get currentUserName => _prefs.getUserName();
+  String get currentUserPhone => _prefs.getUserPhone();
+
+  @override
+  void initState() {
+    super.initState();
+    print('👤 المستخدم الحالي: $currentUserId - $currentUserName');
+    _checkAuth();
+  }
+
+  void _checkAuth() {
+    if (currentUserId.isEmpty) {
+      Get.snackbar(
+        'تنبيه',
+        'يجب تسجيل الدخول أولاً',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
+      Future.delayed(const Duration(seconds: 2), () => Get.back());
+    }
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -30,10 +58,20 @@ class _AddChatScreenState extends State<AddChatScreen> {
     super.dispose();
   }
 
-  /// تطبيع رقم الهاتف - إزالة كل شيء عدا الأرقام
   String _normalizePhone(String phone) {
-    return phone.replaceAll(RegExp(r'[^\d]'), '');
+    String normalized = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    if (normalized.startsWith('0')) {
+      normalized = normalized.substring(1);
+    }
+    if (normalized.startsWith('+970')) {
+      normalized = normalized.replaceFirst('+970', '');
+    }
+    if (normalized.startsWith('970')) {
+      normalized = normalized.replaceFirst('970', '');
+    }
+    return normalized;
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -381,62 +419,38 @@ class _AddChatScreenState extends State<AddChatScreen> {
       return;
     }
 
+    if (currentUserId.isEmpty) {
+      Get.snackbar(
+        'خطأ في المصادقة',
+        'يجب تسجيل الدخول أولاً',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
       final phone = _phoneController.text.trim();
       final normalizedPhone = _normalizePhone(phone);
-      final currentUserId = '567450057'; // استبدل بـ FirebaseAuth
 
       print('🔍 البحث عن رقم: $phone');
       print('🔍 الرقم المطبّع: $normalizedPhone');
+      print('👤 المستخدم الحالي: $currentUserId - $currentUserName');
 
-      // البحث بطريقتين: phone و phoneCanon
-      QuerySnapshot userQuery;
-
-      // المحاولة الأولى: البحث بـ phoneCanon
-      userQuery = await FirebaseFirestore.instance
+      // البحث في Firestore
+      final userQuery = await FirebaseFirestore.instance
           .collection('users')
           .where('phoneCanon', isEqualTo: normalizedPhone)
           .limit(1)
           .get();
-
-      // المحاولة الثانية: البحث بـ phone إذا فشلت الأولى
-      if (userQuery.docs.isEmpty) {
-        print('⚠️ لم يتم العثور بـ phoneCanon، محاولة البحث بـ phone');
-        userQuery = await FirebaseFirestore.instance
-            .collection('users')
-            .where('phone', isEqualTo: phone)
-            .limit(1)
-            .get();
-      }
-
-      // المحاولة الثالثة: البحث بـ phone المطبّع
-      if (userQuery.docs.isEmpty) {
-        print('⚠️ لم يتم العثور بـ phone، محاولة البحث بـ phone المطبّع');
-        userQuery = await FirebaseFirestore.instance
-            .collection('users')
-            .where('phone', isEqualTo: normalizedPhone)
-            .limit(1)
-            .get();
-      }
-
-      // المحاولة الرابعة: البحث مع +970
-      if (userQuery.docs.isEmpty && !normalizedPhone.startsWith('970')) {
-        print('⚠️ محاولة البحث مع +970');
-        final phoneWith970 = '970${normalizedPhone.substring(1)}';
-        userQuery = await FirebaseFirestore.instance
-            .collection('users')
-            .where('phone', isEqualTo: phoneWith970)
-            .limit(1)
-            .get();
-      }
-
       if (userQuery.docs.isEmpty) {
         print('❌ لم يتم العثور على المستخدم');
         Get.snackbar(
           'غير موجود',
-          'المستخدم غير مسجل في التطبيق\nرقم البحث: $normalizedPhone',
+          'المستخدم غير مسجل في التطبيق',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.orange,
           colorText: Colors.white,
@@ -450,7 +464,7 @@ class _AddChatScreenState extends State<AddChatScreen> {
       final contactUserId = contactDoc.id;
       final contactData = contactDoc.data() as Map<String, dynamic>;
 
-      print('✅ تم العثور على المستخدم: ${contactData['name']}');
+      print('✅ تم العثور على المستخدم: ${contactData['name']} - $contactUserId');
 
       // تحقق من أن المستخدم لا يضيف نفسه
       if (contactUserId == currentUserId) {
@@ -480,10 +494,13 @@ class _AddChatScreenState extends State<AddChatScreen> {
           backgroundColor: Colors.blue,
           colorText: Colors.white,
         );
+
+        // ✅ فتح المحادثة مباشرة إذا كان موجوداً مسبقاً
+        await _openChatDirectly(contactUserId, contactData);
         return;
       }
 
-      // إضافة للجهات
+      // 🔹 الخطوة 1: إضافة المستخدم إلى جهات الاتصال
       await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUserId)
@@ -498,11 +515,14 @@ class _AddChatScreenState extends State<AddChatScreen> {
         'imageUrl': contactData['imageUrl'],
       });
 
-      print('✅ تمت الإضافة بنجاح');
+      print('✅ تمت إضافة جهة الاتصال بنجاح');
+
+      // 🔹 الخطوة 2: إنشاء محادثة فردية تلقائياً
+      await _createIndividualChat(contactUserId, contactData);
 
       Get.snackbar(
         'نجح',
-        'تمت إضافة ${contactData['name']} بنجاح',
+        'تمت إضافة ${contactData['name']} وفتح محادثة جديدة',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.green,
         colorText: Colors.white,
@@ -526,4 +546,660 @@ class _AddChatScreenState extends State<AddChatScreen> {
       }
     }
   }
+
+  /// 🔹 دالة فتح المحادثة مباشرة إذا كان المستخدم موجوداً مسبقاً
+  Future<void> _openChatDirectly(String contactUserId, Map<String, dynamic> contactData) async {
+    try {
+      final chatId = _generateChatId(currentUserId, contactUserId);
+
+      // التحقق من وجود المحادثة
+      final chatDoc = await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(chatId)
+          .get();
+
+      if (chatDoc.exists) {
+        // فتح المحادثة الموجودة
+        Get.to(() => SingleChatScreen(
+          otherUserId: contactUserId,
+          otherUserName: contactData['name'],
+          otherUserImage: contactData['imageUrl'],
+        ));
+      } else {
+        // إنشاء محادثة جديدة ثم فتحها
+        await _createIndividualChat(contactUserId, contactData);
+      }
+    } catch (e) {
+      print('❌ خطأ في فتح المحادثة: $e');
+    }
+  }
+
+  /// 🔹 دالة إنشاء محادثة فردية تلقائية
+  /// 🔹 دالة إنشاء محادثة فردية تلقائية (بدون تكرار)
+  Future<void> _createIndividualChat(
+      String contactUserId, Map<String, dynamic> contactData) async {
+    try {
+      final chatId = _generateChatId(currentUserId, contactUserId);
+
+      print('💬 محاولة إنشاء محادثة جديدة: $chatId');
+
+      // ✅ تحقق أولًا إذا كانت المحادثة موجودة بالفعل
+      final existingChat = await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(chatId)
+          .get();
+
+      if (existingChat.exists) {
+        print('⚠️ المحادثة موجودة مسبقًا: $chatId');
+        // افتح المحادثة الموجودة مباشرة
+        Get.to(() => SingleChatScreen(
+          otherUserId: contactUserId,
+          otherUserName: contactData['name'],
+          otherUserImage: contactData['imageUrl'],
+        ));
+        return;
+      }
+
+      // ✅ إذا لم تكن موجودة، أنشئها الآن
+      final chatData = {
+        'id': chatId,
+        'type': 'individual',
+        'participants': [currentUserId, contactUserId],
+        'participantsData': {
+          currentUserId: {
+            'name': currentUserName,
+            'phone': currentUserPhone,
+            'imageUrl': _prefs.getUserImage() ?? '',
+          },
+          contactUserId: {
+            'name': contactData['name'],
+            'phone': contactData['phone'],
+            'imageUrl': contactData['imageUrl'] ?? '',
+          },
+        },
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'lastMessage': 'بدأت المحادثة',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastMessageSender': currentUserId,
+        'unreadCount': {
+          currentUserId: 0,
+          contactUserId: 0,
+        },
+      };
+
+      await FirebaseFirestore.instance.collection('chats').doc(chatId).set(chatData);
+      print('✅ تم إنشاء المحادثة بنجاح: $chatId');
+
+      // إضافة رسالة ترحيب تلقائية
+      await _addWelcomeMessage(chatId, contactData['name']);
+
+      // فتح المحادثة بعد الإنشاء
+      Get.to(() => SingleChatScreen(
+        otherUserId: contactUserId,
+        otherUserName: contactData['name'],
+        otherUserImage: contactData['imageUrl'],
+      ));
+    } catch (e) {
+      print('❌ خطأ في إنشاء المحادثة: $e');
+      throw Exception('فشل إنشاء المحادثة: $e');
+    }
+  }
+
+  /// 🔹 دالة إضافة رسالة ترحيب تلقائية
+  Future<void> _addWelcomeMessage(String chatId, String contactName) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .add({
+        'text': 'مرحباً $contactName! 👋',
+        'senderId': currentUserId,
+        'senderName': currentUserName,
+        'timestamp': FieldValue.serverTimestamp(),
+        'type': 'text',
+        'status': 'sent',
+      });
+
+      print('✅ تم إضافة رسالة الترحيب');
+    } catch (e) {
+      print('❌ خطأ في إضافة رسالة الترحيب: $e');
+    }
+  }
+
+  /// 🔹 دالة إنشاء معرف فريد للمحادثة
+  String _generateChatId(String user1Id, String user2Id) {
+    final sortedIds = [user1Id, user2Id]..sort();
+    return 'individual_${sortedIds[0]}_${sortedIds[1]}';
+  }
 }
+// // المسار: lib/features/home/add_chat/presentation/pages/add_chat_screen.dart
+//
+// import 'package:flutter/material.dart';
+// import 'package:flutter/services.dart';
+// import 'package:get/get.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:app_mobile/core/resources/manager_colors.dart';
+// import 'package:app_mobile/core/resources/manager_font_size.dart';
+// import 'package:app_mobile/core/resources/manager_height.dart';
+// import 'package:app_mobile/core/resources/manager_styles.dart';
+// import 'package:app_mobile/core/resources/manager_width.dart';
+//
+// class AddChatScreen extends StatefulWidget {
+//   const AddChatScreen({super.key});
+//
+//   @override
+//   State<AddChatScreen> createState() => _AddChatScreenState();
+// }
+//
+// class _AddChatScreenState extends State<AddChatScreen> {
+//   final _nameController = TextEditingController();
+//   final _phoneController = TextEditingController();
+//   final _formKey = GlobalKey<FormState>();
+//   bool _isLoading = false;
+//
+//   @override
+//   void dispose() {
+//     _nameController.dispose();
+//     _phoneController.dispose();
+//     super.dispose();
+//   }
+//
+//   /// تطبيع رقم الهاتف - إزالة كل شيء عدا الأرقام
+//   String _normalizePhone(String phone) {
+//     return phone.replaceAll(RegExp(r'[^\d]'), '');
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: Colors.white,
+//       appBar: _buildAppBar(),
+//       body: Form(
+//         key: _formKey,
+//         child: SingleChildScrollView(
+//           padding: EdgeInsets.all(ManagerWidth.w20),
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               _buildHeader(),
+//               SizedBox(height: ManagerHeight.h30),
+//               _buildNameField(),
+//               SizedBox(height: ManagerHeight.h20),
+//               _buildPhoneField(),
+//               SizedBox(height: ManagerHeight.h30),
+//               _buildInfoBox(),
+//               SizedBox(height: ManagerHeight.h40),
+//               _buildAddButton(),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+//
+//   PreferredSizeWidget _buildAppBar() {
+//     return AppBar(
+//       backgroundColor: ManagerColors.primaryColor,
+//       elevation: 0,
+//       leading: IconButton(
+//         icon: const Icon(Icons.arrow_back, color: Colors.white),
+//         onPressed: () => Get.back(),
+//       ),
+//       title: Text(
+//         'إضافة جهة اتصال جديدة',
+//         style: getBoldTextStyle(
+//           fontSize: ManagerFontSize.s16,
+//           color: Colors.white,
+//         ),
+//       ),
+//     );
+//   }
+//
+//   Widget _buildHeader() {
+//     return Column(
+//       children: [
+//         Container(
+//           width: 100,
+//           height: 100,
+//           decoration: BoxDecoration(
+//             gradient: LinearGradient(
+//               colors: [
+//                 ManagerColors.primaryColor,
+//                 ManagerColors.primaryColor.withOpacity(0.7),
+//               ],
+//             ),
+//             shape: BoxShape.circle,
+//           ),
+//           child: const Icon(
+//             Icons.person_add,
+//             color: Colors.white,
+//             size: 50,
+//           ),
+//         ),
+//         SizedBox(height: ManagerHeight.h16),
+//         Text(
+//           'أضف جهة اتصال',
+//           style: getBoldTextStyle(
+//             fontSize: ManagerFontSize.s20,
+//             color: ManagerColors.black,
+//           ),
+//         ),
+//         SizedBox(height: ManagerHeight.h8),
+//         Text(
+//           'أدخل رقم الهاتف للبحث عن المستخدم',
+//           style: getRegularTextStyle(
+//             fontSize: ManagerFontSize.s14,
+//             color: Colors.grey.shade600,
+//           ),
+//           textAlign: TextAlign.center,
+//         ),
+//       ],
+//     );
+//   }
+//
+//   Widget _buildNameField() {
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         Row(
+//           children: [
+//             Icon(
+//               Icons.person_outline,
+//               color: ManagerColors.primaryColor,
+//               size: 20,
+//             ),
+//             SizedBox(width: ManagerWidth.w8),
+//             Text(
+//               'الاسم (اختياري)',
+//               style: getBoldTextStyle(
+//                 fontSize: ManagerFontSize.s14,
+//                 color: ManagerColors.black,
+//               ),
+//             ),
+//           ],
+//         ),
+//         SizedBox(height: ManagerHeight.h10),
+//         TextFormField(
+//           controller: _nameController,
+//           textAlign: TextAlign.right,
+//           style: getRegularTextStyle(
+//             fontSize: ManagerFontSize.s14,
+//             color: ManagerColors.black,
+//           ),
+//           decoration: InputDecoration(
+//             hintText: 'سيتم استخدام الاسم من الحساب',
+//             hintStyle: getRegularTextStyle(
+//               fontSize: ManagerFontSize.s14,
+//               color: Colors.grey.shade400,
+//             ),
+//             filled: true,
+//             fillColor: Colors.grey.shade50,
+//             border: OutlineInputBorder(
+//               borderRadius: BorderRadius.circular(12),
+//               borderSide: BorderSide(color: Colors.grey.shade300),
+//             ),
+//             enabledBorder: OutlineInputBorder(
+//               borderRadius: BorderRadius.circular(12),
+//               borderSide: BorderSide(color: Colors.grey.shade300),
+//             ),
+//             focusedBorder: OutlineInputBorder(
+//               borderRadius: BorderRadius.circular(12),
+//               borderSide: BorderSide(
+//                 color: ManagerColors.primaryColor,
+//                 width: 2,
+//               ),
+//             ),
+//             prefixIcon: Icon(
+//               Icons.person,
+//               color: Colors.grey.shade400,
+//             ),
+//             contentPadding: EdgeInsets.symmetric(
+//               horizontal: ManagerWidth.w16,
+//               vertical: ManagerHeight.h16,
+//             ),
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+//
+//   Widget _buildPhoneField() {
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         Row(
+//           children: [
+//             Icon(
+//               Icons.phone_outlined,
+//               color: ManagerColors.primaryColor,
+//               size: 20,
+//             ),
+//             SizedBox(width: ManagerWidth.w8),
+//             Text(
+//               'رقم الجوال',
+//               style: getBoldTextStyle(
+//                 fontSize: ManagerFontSize.s14,
+//                 color: ManagerColors.black,
+//               ),
+//             ),
+//             Text(
+//               ' *',
+//               style: getBoldTextStyle(
+//                 fontSize: ManagerFontSize.s14,
+//                 color: Colors.red,
+//               ),
+//             ),
+//           ],
+//         ),
+//         SizedBox(height: ManagerHeight.h10),
+//         TextFormField(
+//           controller: _phoneController,
+//           textAlign: TextAlign.right,
+//           keyboardType: TextInputType.phone,
+//           validator: (value) {
+//             if (value == null || value.trim().isEmpty) {
+//               return 'الرجاء إدخال رقم الهاتف';
+//             }
+//             final normalized = _normalizePhone(value);
+//             if (normalized.length < 9) {
+//               return 'رقم الهاتف غير صحيح';
+//             }
+//             return null;
+//           },
+//           inputFormatters: [
+//             FilteringTextInputFormatter.allow(RegExp(r'[\d+\s-]')),
+//           ],
+//           style: getRegularTextStyle(
+//             fontSize: ManagerFontSize.s14,
+//             color: ManagerColors.black,
+//           ),
+//           decoration: InputDecoration(
+//             hintText: '0567450057 أو +970567450057',
+//             hintStyle: getRegularTextStyle(
+//               fontSize: ManagerFontSize.s14,
+//               color: Colors.grey.shade400,
+//             ),
+//             filled: true,
+//             fillColor: Colors.grey.shade50,
+//             border: OutlineInputBorder(
+//               borderRadius: BorderRadius.circular(12),
+//               borderSide: BorderSide(color: Colors.grey.shade300),
+//             ),
+//             enabledBorder: OutlineInputBorder(
+//               borderRadius: BorderRadius.circular(12),
+//               borderSide: BorderSide(color: Colors.grey.shade300),
+//             ),
+//             focusedBorder: OutlineInputBorder(
+//               borderRadius: BorderRadius.circular(12),
+//               borderSide: BorderSide(
+//                 color: ManagerColors.primaryColor,
+//                 width: 2,
+//               ),
+//             ),
+//             errorBorder: OutlineInputBorder(
+//               borderRadius: BorderRadius.circular(12),
+//               borderSide: const BorderSide(color: Colors.red),
+//             ),
+//             prefixIcon: Icon(
+//               Icons.phone_android,
+//               color: Colors.grey.shade400,
+//             ),
+//             contentPadding: EdgeInsets.symmetric(
+//               horizontal: ManagerWidth.w16,
+//               vertical: ManagerHeight.h16,
+//             ),
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+//
+//   Widget _buildInfoBox() {
+//     return Container(
+//       padding: EdgeInsets.all(ManagerWidth.w14),
+//       decoration: BoxDecoration(
+//         gradient: LinearGradient(
+//           colors: [
+//             Colors.blue.shade50,
+//             Colors.blue.shade100.withOpacity(0.3),
+//           ],
+//         ),
+//         borderRadius: BorderRadius.circular(12),
+//         border: Border.all(color: Colors.blue.shade200),
+//       ),
+//       child: Row(
+//         children: [
+//           Container(
+//             padding: EdgeInsets.all(ManagerWidth.w8),
+//             decoration: BoxDecoration(
+//               color: Colors.blue.shade100,
+//               borderRadius: BorderRadius.circular(8),
+//             ),
+//             child: Icon(
+//               Icons.info_outline,
+//               color: Colors.blue.shade700,
+//               size: 20,
+//             ),
+//           ),
+//           SizedBox(width: ManagerWidth.w12),
+//           Expanded(
+//             child: Text(
+//               'سيتم البحث عن المستخدم في التطبيق باستخدام رقم الهاتف',
+//               style: getRegularTextStyle(
+//                 fontSize: ManagerFontSize.s12,
+//                 color: Colors.blue.shade900,
+//               ),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+//
+//   Widget _buildAddButton() {
+//     return SizedBox(
+//       width: double.infinity,
+//       child: ElevatedButton(
+//         onPressed: _isLoading ? null : _handleAddContact,
+//         style: ElevatedButton.styleFrom(
+//           backgroundColor: ManagerColors.primaryColor,
+//           disabledBackgroundColor: Colors.grey.shade300,
+//           shape: RoundedRectangleBorder(
+//             borderRadius: BorderRadius.circular(12),
+//           ),
+//           padding: EdgeInsets.symmetric(vertical: ManagerHeight.h16),
+//           elevation: 4,
+//         ),
+//         child: _isLoading
+//             ? Row(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             const SizedBox(
+//               width: 20,
+//               height: 20,
+//               child: CircularProgressIndicator(
+//                 strokeWidth: 2,
+//                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+//               ),
+//             ),
+//             SizedBox(width: ManagerWidth.w12),
+//             Text(
+//               'جاري البحث...',
+//               style: getBoldTextStyle(
+//                 fontSize: ManagerFontSize.s15,
+//                 color: Colors.white,
+//               ),
+//             ),
+//           ],
+//         )
+//             : Row(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             const Icon(Icons.person_add, color: Colors.white),
+//             SizedBox(width: ManagerWidth.w10),
+//             Text(
+//               'بحث وإضافة',
+//               style: getBoldTextStyle(
+//                 fontSize: ManagerFontSize.s15,
+//                 color: Colors.white,
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+//
+//   Future<void> _handleAddContact() async {
+//     if (!_formKey.currentState!.validate()) {
+//       return;
+//     }
+//
+//     setState(() => _isLoading = true);
+//
+//     try {
+//       final phone = _phoneController.text.trim();
+//       final normalizedPhone = _normalizePhone(phone);
+//       final currentUserId = '567450057'; // استبدل بـ FirebaseAuth
+//
+//       print('🔍 البحث عن رقم: $phone');
+//       print('🔍 الرقم المطبّع: $normalizedPhone');
+//
+//       // البحث بطريقتين: phone و phoneCanon
+//       QuerySnapshot userQuery;
+//
+//       // المحاولة الأولى: البحث بـ phoneCanon
+//       userQuery = await FirebaseFirestore.instance
+//           .collection('users')
+//           .where('phoneCanon', isEqualTo: normalizedPhone)
+//           .limit(1)
+//           .get();
+//
+//       // المحاولة الثانية: البحث بـ phone إذا فشلت الأولى
+//       if (userQuery.docs.isEmpty) {
+//         print('⚠️ لم يتم العثور بـ phoneCanon، محاولة البحث بـ phone');
+//         userQuery = await FirebaseFirestore.instance
+//             .collection('users')
+//             .where('phone', isEqualTo: phone)
+//             .limit(1)
+//             .get();
+//       }
+//
+//       // المحاولة الثالثة: البحث بـ phone المطبّع
+//       if (userQuery.docs.isEmpty) {
+//         print('⚠️ لم يتم العثور بـ phone، محاولة البحث بـ phone المطبّع');
+//         userQuery = await FirebaseFirestore.instance
+//             .collection('users')
+//             .where('phone', isEqualTo: normalizedPhone)
+//             .limit(1)
+//             .get();
+//       }
+//
+//       // المحاولة الرابعة: البحث مع +970
+//       if (userQuery.docs.isEmpty && !normalizedPhone.startsWith('970')) {
+//         print('⚠️ محاولة البحث مع +970');
+//         final phoneWith970 = '970${normalizedPhone.substring(1)}';
+//         userQuery = await FirebaseFirestore.instance
+//             .collection('users')
+//             .where('phone', isEqualTo: phoneWith970)
+//             .limit(1)
+//             .get();
+//       }
+//
+//       if (userQuery.docs.isEmpty) {
+//         print('❌ لم يتم العثور على المستخدم');
+//         Get.snackbar(
+//           'غير موجود',
+//           'المستخدم غير مسجل في التطبيق\nرقم البحث: $normalizedPhone',
+//           snackPosition: SnackPosition.BOTTOM,
+//           backgroundColor: Colors.orange,
+//           colorText: Colors.white,
+//           icon: const Icon(Icons.warning_amber, color: Colors.white),
+//           duration: const Duration(seconds: 4),
+//         );
+//         return;
+//       }
+//
+//       final contactDoc = userQuery.docs.first;
+//       final contactUserId = contactDoc.id;
+//       final contactData = contactDoc.data() as Map<String, dynamic>;
+//
+//       print('✅ تم العثور على المستخدم: ${contactData['name']}');
+//
+//       // تحقق من أن المستخدم لا يضيف نفسه
+//       if (contactUserId == currentUserId) {
+//         Get.snackbar(
+//           'تنبيه',
+//           'لا يمكنك إضافة نفسك كجهة اتصال',
+//           snackPosition: SnackPosition.BOTTOM,
+//           backgroundColor: Colors.orange,
+//           colorText: Colors.white,
+//         );
+//         return;
+//       }
+//
+//       // تحقق من أن المستخدم ليس مضافاً مسبقاً
+//       final existingContact = await FirebaseFirestore.instance
+//           .collection('users')
+//           .doc(currentUserId)
+//           .collection('contacts')
+//           .doc(contactUserId)
+//           .get();
+//
+//       if (existingContact.exists) {
+//         Get.snackbar(
+//           'موجود مسبقاً',
+//           'هذا المستخدم موجود في جهات الاتصال',
+//           snackPosition: SnackPosition.BOTTOM,
+//           backgroundColor: Colors.blue,
+//           colorText: Colors.white,
+//         );
+//         return;
+//       }
+//
+//       // إضافة للجهات
+//       await FirebaseFirestore.instance
+//           .collection('users')
+//           .doc(currentUserId)
+//           .collection('contacts')
+//           .doc(contactUserId)
+//           .set({
+//         'addedAt': FieldValue.serverTimestamp(),
+//         'name': _nameController.text.trim().isEmpty
+//             ? contactData['name']
+//             : _nameController.text.trim(),
+//         'phone': contactData['phone'],
+//         'imageUrl': contactData['imageUrl'],
+//       });
+//
+//       print('✅ تمت الإضافة بنجاح');
+//
+//       Get.snackbar(
+//         'نجح',
+//         'تمت إضافة ${contactData['name']} بنجاح',
+//         snackPosition: SnackPosition.BOTTOM,
+//         backgroundColor: Colors.green,
+//         colorText: Colors.white,
+//         icon: const Icon(Icons.check_circle, color: Colors.white),
+//       );
+//
+//       Get.back(result: true);
+//     } catch (e) {
+//       print('❌ خطأ: $e');
+//       Get.snackbar(
+//         'خطأ',
+//         'فشل إضافة جهة الاتصال: $e',
+//         snackPosition: SnackPosition.BOTTOM,
+//         backgroundColor: Colors.red,
+//         colorText: Colors.white,
+//         icon: const Icon(Icons.error, color: Colors.white),
+//       );
+//     } finally {
+//       if (mounted) {
+//         setState(() => _isLoading = false);
+//       }
+//     }
+//   }
+// }

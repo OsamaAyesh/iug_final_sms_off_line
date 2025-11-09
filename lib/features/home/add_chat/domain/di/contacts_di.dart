@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import '../../data/data_source/contacts_remote_data_source.dart';
 import '../../data/repository/contacts_repository.dart';
 import '../../data/repository/contacts_repository_impl.dart';
-import '../../presentation/controller/contacts_controller.dart';
+import '../../presentation/controller/contacts_controller.dart'; // ✅ المسار الصحيح
 import '../use_cases/get_all_contacts_usecase.dart';
 import '../use_cases/add_contact_usecase.dart';
 import '../use_cases/find_contact_by_phone_usecase.dart';
@@ -41,7 +41,7 @@ class ContactsDI {
       fenix: true,
     );
 
-    // Controller
+    // Controller - ✅ المسار الصحيح الآن
     Get.lazyPut(
           () => ContactsController(
         getAllContactsUseCase: Get.find<GetAllContactsUseCase>(),

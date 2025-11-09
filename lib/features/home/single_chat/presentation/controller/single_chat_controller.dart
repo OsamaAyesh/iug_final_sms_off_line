@@ -32,7 +32,6 @@ class SingleChatController extends GetxController {
   String currentUserId = '';
   String otherUserId = '';
 
-  // ✅ إصلاح: استخدام RxMap بدلاً من Map عادية
   final otherUserInfo = RxMap<String, dynamic>();
 
   final userChats = <QueryDocumentSnapshot>[].obs;
@@ -42,7 +41,7 @@ class SingleChatController extends GetxController {
   StreamSubscription? _chatsSubscription;
 
   // ================================
-  // ✅ INITIALIZATION
+  //  INITIALIZATION
   // ================================
 
   @override
@@ -353,10 +352,53 @@ class SingleChatController extends GetxController {
   // ✅ SMS MANAGEMENT (مميز للمحادثات الفردية)
   // ================================
 
+  // Future<void> sendSmsForMessage(SingleMessageModel message) async {
+  //   if (isSendingSms.value) return;
+  //
+  //   // ✅ إصلاح: استخدام otherUserInfo.value للوصول للبيانات
+  //   final phoneNumber = otherUserInfo.value['phone'] ?? otherUserInfo.value['phoneCanon'];
+  //   if (phoneNumber == null || phoneNumber.isEmpty) {
+  //     AppSnackbar.error('لا يوجد رقم هاتف للمستخدم');
+  //     return;
+  //   }
+  //
+  //   isSendingSms.value = true;
+  //
+  //   try {
+  //     final smsContent = "رسالة جديدة من ${otherUserInfo.value['name'] ?? 'مستخدم'}: ${message.content}";
+  //
+  //     final result = await repository.sendSmsToUser(
+  //       currentChatId,
+  //       phoneNumber,
+  //       smsContent,
+  //       message.id,
+  //     );
+  //
+  //     if (result['success'] == true) {
+  //       AppSnackbar.success('تم إرسال SMS بنجاح');
+  //
+  //       // تحديث حالة الرسالة إذا لزم
+  //       if (message.receiverStatus == 'pending') {
+  //         await repository.updateMessageStatus(
+  //           chatId: currentChatId,
+  //           messageId: message.id,
+  //           userId: otherUserId,
+  //           status: 'delivered',
+  //         );
+  //       }
+  //     } else {
+  //       AppSnackbar.error('فشل إرسال SMS: ${result['error']}');
+  //     }
+  //   } catch (e) {
+  //     AppSnackbar.error('فشل إرسال SMS: $e');
+  //   } finally {
+  //     isSendingSms.value = false;
+  //   }
+  // }
   Future<void> sendSmsForMessage(SingleMessageModel message) async {
     if (isSendingSms.value) return;
 
-    // ✅ إصلاح: استخدام otherUserInfo.value للوصول للبيانات
+    // ✅ رقم المستلم
     final phoneNumber = otherUserInfo.value['phone'] ?? otherUserInfo.value['phoneCanon'];
     if (phoneNumber == null || phoneNumber.isEmpty) {
       AppSnackbar.error('لا يوجد رقم هاتف للمستخدم');
@@ -366,7 +408,11 @@ class SingleChatController extends GetxController {
     isSendingSms.value = true;
 
     try {
-      final smsContent = "رسالة جديدة من ${otherUserInfo.value['name'] ?? 'مستخدم'}: ${message.content}";
+      // ✅ اسم المرسل الحقيقي (المستخدم الحالي)
+      final prefs = AppSettingsPrefs(await SharedPreferences.getInstance());
+      final currentUserName = prefs.getUserName() ?? 'مستخدم';
+
+      final smsContent = "رسالة جديدة من $currentUserName: ${message.content}";
 
       final result = await repository.sendSmsToUser(
         currentChatId,

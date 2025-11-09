@@ -41,7 +41,7 @@ class ChatRemoteDataSource {
 
     try {
       final snapshot = await _firestore
-          .collection('chat_rooms')
+          .collection('chats')
           .where('participants', arrayContains: currentUserId) // 🔹 التصفية هنا
           .orderBy('timestamp', descending: true)
           .get();
