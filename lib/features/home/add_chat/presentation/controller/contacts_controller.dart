@@ -1,5 +1,6 @@
 // المسار: lib/features/contacts/presentation/controller/contacts_controller.dart
 
+import 'package:app_mobile/core/util/snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:app_mobile/core/storage/local/app_settings_prefs.dart';
@@ -29,11 +30,9 @@ class ContactsController extends GetxController {
   final isLoading = false.obs;
   final searchController = TextEditingController();
 
-  // Form Controllers
   final nameController = TextEditingController();
   final phoneController = TextEditingController();
 
-  // ✅ استخدام user_id من SharedPreferences
   String get currentUserId => _prefs.getUserId();
   String get currentUserName => _prefs.getUserName();
 
@@ -41,40 +40,23 @@ class ContactsController extends GetxController {
   void onInit() {
     super.onInit();
 
-    // التحقق من المصادقة أولاً
     if (currentUserId.isEmpty) {
-      Get.snackbar(
-        'تنبيه',
-        'يجب تسجيل الدخول أولاً',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-      );
+      AppSnackbar.warning("يجب تسجيل الدخول أولاً");
       return;
     }
 
     print('👤 تحميل جهات الاتصال للمستخدم: $currentUserId - $currentUserName');
     loadContacts();
 
-    // Search listener
     searchController.addListener(() {
       filterContacts(searchController.text);
     });
   }
 
-  // ================================
-  // 🔸 Load Contacts
-  // ================================
 
   Future<void> loadContacts() async {
     if (currentUserId.isEmpty) {
-      Get.snackbar(
-        'خطأ',
-        'يجب تسجيل الدخول أولاً',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      AppSnackbar.error('يجب تسجيل الدخول أولاً');
       return;
     }
 
@@ -86,13 +68,7 @@ class ContactsController extends GetxController {
       filteredContacts.assignAll(result);
       print('✅ تم تحميل ${result.length} جهة اتصال');
     } catch (e) {
-      Get.snackbar(
-        'خطأ',
-        'فشل تحميل جهات الاتصال: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      AppSnackbar.error('فشل تحميل جهات الاتصال: $e');
     } finally {
       isLoading.value = false;
     }
@@ -130,24 +106,14 @@ class ContactsController extends GetxController {
   }) async {
     // التحقق من المصادقة
     if (currentUserId.isEmpty) {
-      Get.snackbar(
-        'خطأ',
-        'يجب تسجيل الدخول أولاً',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      AppSnackbar.error('يجب تسجيل الدخول أولاً');
+
       return;
     }
 
     if (name.trim().isEmpty || phone.trim().isEmpty) {
-      Get.snackbar(
-        'خطأ',
-        'الرجاء إدخال الاسم ورقم الهاتف',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-      );
+      AppSnackbar.warning('الرجاء إدخال الاسم ورقم الهاتف');
+
       return;
     }
 
@@ -158,26 +124,14 @@ class ContactsController extends GetxController {
       final contact = await findContactByPhoneUseCase.call(phone);
 
       if (contact == null) {
-        Get.snackbar(
-          'غير موجود',
-          'المستخدم غير موجود في التطبيق',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-        );
+        AppSnackbar.warning('المستخدم غير موجود في التطبيق');
         return;
       }
 
       // Add contact
       await addContactUseCase.call(currentUserId, contact.id);
+      AppSnackbar.success('تمت إضافة جهة الاتصال بنجاح');
 
-      Get.snackbar(
-        'نجح',
-        'تمت إضافة جهة الاتصال بنجاح',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
 
       // Clear form
       nameController.clear();
@@ -188,13 +142,7 @@ class ContactsController extends GetxController {
 
       Get.back();
     } catch (e) {
-      Get.snackbar(
-        'خطأ',
-        'فشل إضافة جهة الاتصال: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      AppSnackbar.error('فشل إضافة جهة الاتصال: $e');
     } finally {
       isLoading.value = false;
     }
