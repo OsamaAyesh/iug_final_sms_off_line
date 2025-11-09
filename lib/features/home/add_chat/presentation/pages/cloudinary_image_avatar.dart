@@ -1,5 +1,6 @@
 // المسار: lib/core/widgets/cloudinary_image.dart
 
+import 'package:app_mobile/core/resources/manager_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -120,19 +121,18 @@ class CloudinaryAvatar extends StatelessWidget {
       return CircleAvatar(
         radius: radius,
         backgroundColor:
-        backgroundColor ?? Theme.of(context).primaryColor.withOpacity(0.1),
+        backgroundColor ?? ManagerColors.white.withOpacity(0.1),
         child: Text(
           fallbackText.isNotEmpty ? fallbackText[0].toUpperCase() : '?',
           style: TextStyle(
             fontSize: radius * 0.6,
             fontWeight: FontWeight.bold,
-            color: textColor ?? Theme.of(context).primaryColor,
+            color: ManagerColors.white,
           ),
         ),
       );
     }
 
-    // استخدام Thumbnail من Cloudinary
     final thumbnailUrl = CloudinaryService.thumb(
       imageUrl!,
       w: (radius * 2).toInt(),

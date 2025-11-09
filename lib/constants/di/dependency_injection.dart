@@ -17,6 +17,7 @@ import '../../features/auth/domain/di/auth_di.dart';
 import '../../features/auth/presentation/controller/auth_controller.dart';
 import '../../features/home/add_chat/domain/di/contacts_di.dart';
 import '../../features/home/group_chat/domain/di/chat_group_di.dart';
+import '../../features/home/profile/domain/di/profile_di.dart';
 import '../../firebase_options.dart';
 
 final instance = GetIt.instance;
@@ -73,4 +74,6 @@ initModule() async {
   ChatGroupDI.init();
 
   ContactsDI.init();
+  ProfileDI.init();
+
 }

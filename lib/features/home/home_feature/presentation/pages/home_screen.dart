@@ -11,6 +11,8 @@ import '../../../add_chat/presentation/pages/add_chat_screen.dart';
 import '../../../add_chat/presentation/pages/cloudinary_image_avatar.dart';
 import '../../../add_chat/presentation/pages/select_members_screen.dart';
 import '../../../group_chat/presentation/pages/group_chat_screen.dart';
+import '../../../profile/domain/di/profile_di.dart';
+import '../../../profile/pages/profile_screen.dart';
 import '../../../single_chat/presentation/pages/single_chat_screen.dart'; // ✅ إضافة الاستيراد
 import '../controller/chat_controller.dart';
 import '../widgets/custom_tab_switcher_trader.dart';
@@ -79,6 +81,33 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         ),
       );
     });
+  }// ✅ دالة الانتقال إلى الملف الشخصي
+  void _goToProfile() {
+    if (controller.isUserLoggedIn.value) {
+      // تأكد من تهيئة Profile DI أولاً
+      ProfileDI.init();
+      Get.to(() => ProfileScreen());
+    } else {
+      _showLoginPrompt();
+    }
+  }
+
+// ✅ تحديث دالة معالجة الإجراءات
+  void _handleMenuAction(String value, ChatController controller) {
+    switch (value) {
+      case 'profile':
+        _goToProfile(); // الانتقال إلى الملف الشخصي
+        break;
+      case 'refresh':
+        controller.smartRefresh();
+        break;
+      case 'logout':
+        _performLogout();
+        break;
+      case 'login':
+        _showLoginPrompt();
+        break;
+    }
   }
 
   Widget _buildHeader() {
@@ -101,8 +130,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       color: Colors.white,
                     )),
                 const Spacer(),
-                if (controller.isUserLoggedIn.value && imageUrl != null && imageUrl.isNotEmpty)
-                  CloudinaryAvatar(imageUrl: imageUrl, fallbackText: 'User', radius: 20)
+                // صورة المستخدم - قابلة للنقل للانتقال إلى الملف الشخصي
+                if (controller.isUserLoggedIn.value)
+                  GestureDetector(
+                    onTap: _goToProfile, // ✅ دالة جديدة للانتقال إلى الملف الشخصي
+                    child: CloudinaryAvatar(
+                        imageUrl: imageUrl,
+                        fallbackText: 'User',
+                        radius: 20
+                    ),
+                  )
                 else
                   GestureDetector(
                     onTap: _showLoginPrompt,
@@ -112,10 +149,24 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       child: Icon(Icons.person_add, color: Colors.blue),
                     ),
                   ),
+
                 PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert, color: Colors.white),
-                  onSelected: (value) => _handleMenuAction(value),
+                  onSelected: (value) => _handleMenuAction(value, controller),
                   itemBuilder: (context) => [
+                    // ✅ إضافة خيار الملف الشخصي
+                    if (controller.isUserLoggedIn.value)
+                      const PopupMenuItem(
+                        value: 'profile',
+                        child: Row(
+                          children: [
+                            Icon(Icons.person, color: Colors.blue),
+                            SizedBox(width: 10),
+                            Text('الملف الشخصي'),
+                          ],
+                        ),
+                      ),
+
                     const PopupMenuItem(
                       value: 'refresh',
                       child: Row(
@@ -126,6 +177,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         ],
                       ),
                     ),
+
                     if (controller.isUserLoggedIn.value)
                       const PopupMenuItem(
                         value: 'logout',
@@ -137,6 +189,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           ],
                         ),
                       ),
+
                     if (!controller.isUserLoggedIn.value)
                       const PopupMenuItem(
                         value: 'login',
@@ -151,8 +204,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ],
                 ),
               ],
-            ),
-            SizedBox(height: ManagerHeight.h16),
+            ),            SizedBox(height: ManagerHeight.h16),
             _buildSearchBar(),
           ],
         ),
@@ -537,19 +589,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  void _handleMenuAction(String value) {
-    switch (value) {
-      case 'refresh':
-        controller.smartRefresh();
-        break;
-      case 'logout':
-        _performLogout();
-        break;
-      case 'login':
-        _showLoginPrompt();
-        break;
-    }
-  }
+  // void _handleMenuAction(String value) {
+  //   switch (value) {
+  //     case 'refresh':
+  //       controller.smartRefresh();
+  //       break;
+  //     case 'logout':
+  //       _performLogout();
+  //       break;
+  //     case 'login':
+  //       _showLoginPrompt();
+  //       break;
+  //   }
+  // }
 
   void _performLogout() async {
     try {
