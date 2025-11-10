@@ -4,6 +4,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:app_mobile/core/storage/local/app_settings_prefs.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../../core/resources/manager_colors.dart';
 import '../../../../../core/resources/manager_font_size.dart';
 import '../../../../../core/resources/manager_height.dart';
@@ -29,19 +31,25 @@ class GroupInfoScreen extends StatefulWidget {
 
 class _GroupInfoScreenState extends State<GroupInfoScreen> {
   final _firestore = FirebaseFirestore.instance;
-  String get currentUserId => '567450057'; // استبدل بـ FirebaseAuth
+  late AppSettingsPrefs _prefs;
+
+  // بيانات المستخدم الحالي
+  String _currentUserId = '';
+  String _currentUserName = '';
+  String _currentUserPhone = '';
 
   Map<String, dynamic> groupData = {};
   List<Map<String, dynamic>> members = [];
   List<String> admins = [];
   bool isLoading = true;
+  bool isUserDataLoaded = false;
 
   StreamSubscription? _groupSubscription;
 
   @override
   void initState() {
     super.initState();
-    _loadGroupInfo();
+    _initializeUserData();
   }
 
   @override
@@ -50,7 +58,45 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
     super.dispose();
   }
 
+  // ✅ تهيئة بيانات المستخدم من نظام المصادقة
+  Future<void> _initializeUserData() async {
+    try {
+      final sharedPrefs = await SharedPreferences.getInstance();
+      _prefs = AppSettingsPrefs(sharedPrefs);
+
+      // جلب بيانات المستخدم من SharedPreferences
+      _currentUserId = _prefs.getUserId() ?? '';
+      _currentUserName = _prefs.getUserName() ?? '';
+      _currentUserPhone = _prefs.getUserPhone() ?? '';
+
+      if (_currentUserId.isEmpty) {
+        print('❌ لم يتم العثور على بيانات المستخدم');
+        Get.snackbar('خطأ', 'لم يتم العثور على بيانات المستخدم');
+        Get.back();
+        return;
+      }
+
+      setState(() {
+        isUserDataLoaded = true;
+      });
+
+      print('✅ بيانات المستخدم المحملة:');
+      print('   - user_id: $_currentUserId');
+      print('   - user_name: $_currentUserName');
+      print('   - user_phone: $_currentUserPhone');
+
+      // بعد تحميل بيانات المستخدم، نقوم بتحميل بيانات المجموعة
+      _loadGroupInfo();
+    } catch (e) {
+      print('❌ خطأ في تحميل بيانات المستخدم: $e');
+      Get.snackbar('خطأ', 'فشل في تحميل بيانات المستخدم');
+      Get.back();
+    }
+  }
+
   Future<void> _loadGroupInfo() async {
+    if (!isUserDataLoaded) return;
+
     setState(() => isLoading = true);
 
     try {
@@ -68,7 +114,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
         admins = List<String>.from(groupData['admins'] ?? []);
         final participantIds = List<String>.from(groupData['participants'] ?? []);
 
-        // Load member details
+        // ✅ تحميل تفاصيل الأعضاء
         final membersList = <Map<String, dynamic>>[];
         for (final userId in participantIds) {
           try {
@@ -77,16 +123,36 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
               final userData = userDoc.data()!;
               membersList.add({
                 'id': userId,
-                'name': userData['name'] ?? 'Unknown',
+                'name': userData['name'] ?? 'مستخدم',
                 'imageUrl': userData['imageUrl'] ?? '',
                 'phone': userData['phone'] ?? '',
                 'bio': userData['bio'] ?? '',
                 'isOnline': userData['isOnline'] ?? false,
                 'isAdmin': admins.contains(userId),
               });
+            } else {
+              // إذا لم يتم العثور على المستخدم في قاعدة البيانات
+              membersList.add({
+                'id': userId,
+                'name': 'مستخدم',
+                'imageUrl': '',
+                'phone': '',
+                'bio': '',
+                'isOnline': false,
+                'isAdmin': admins.contains(userId),
+              });
             }
           } catch (e) {
-            print('❌ Error loading user $userId: $e');
+            print('❌ خطأ في تحميل المستخدم $userId: $e');
+            membersList.add({
+              'id': userId,
+              'name': 'مستخدم',
+              'imageUrl': '',
+              'phone': '',
+              'bio': '',
+              'isOnline': false,
+              'isAdmin': admins.contains(userId),
+            });
           }
         }
 
@@ -98,16 +164,41 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
         }
       });
     } catch (e) {
-      print('❌ Error loading group info: $e');
+      print('❌ خطأ في تحميل معلومات المجموعة: $e');
       setState(() => isLoading = false);
+      Get.snackbar('خطأ', 'فشل في تحميل معلومات المجموعة');
     }
   }
 
-  bool get isAdmin => admins.contains(currentUserId);
-  bool get isCreator => groupData['createdBy'] == currentUserId;
+  // ✅ التحقق من صلاحيات المستخدم
+  bool get isAdmin => admins.contains(_currentUserId);
+  bool get isCreator => groupData['createdBy'] == _currentUserId;
+  bool get isMember => members.any((member) => member['id'] == _currentUserId);
 
   @override
   Widget build(BuildContext context) {
+    if (!isUserDataLoaded) {
+      return Scaffold(
+        backgroundColor: Colors.grey.shade50,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: ManagerColors.primaryColor),
+              SizedBox(height: ManagerHeight.h16),
+              Text(
+                'جاري تحميل بيانات المستخدم...',
+                style: getRegularTextStyle(
+                  fontSize: ManagerFontSize.s14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       body: CustomScrollView(
@@ -117,6 +208,38 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
             const SliverFillRemaining(
               child: Center(child: CircularProgressIndicator()),
             )
+          else if (!isMember)
+            SliverFillRemaining(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 64, color: Colors.red),
+                    SizedBox(height: ManagerHeight.h16),
+                    Text(
+                      'غير مسموح بالوصول',
+                      style: getBoldTextStyle(
+                        fontSize: ManagerFontSize.s18,
+                        color: Colors.red,
+                      ),
+                    ),
+                    SizedBox(height: ManagerHeight.h8),
+                    Text(
+                      'أنت لست عضوًا في هذه المجموعة',
+                      style: getRegularTextStyle(
+                        fontSize: ManagerFontSize.s14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    SizedBox(height: ManagerHeight.h16),
+                    ElevatedButton(
+                      onPressed: () => Get.back(),
+                      child: const Text('رجوع'),
+                    ),
+                  ],
+                ),
+              ),
+            )
           else
             SliverList(
               delegate: SliverChildListDelegate([
@@ -125,8 +248,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                 _buildGroupDescription(),
                 SizedBox(height: ManagerHeight.h8),
                 _buildMembersSection(),
-                SizedBox(height: ManagerHeight.h8),
-                _buildMediaSection(),
+                // SizedBox(height: ManagerHeight.h8),
+                // _buildMediaSection(),
                 SizedBox(height: ManagerHeight.h8),
                 _buildSettingsSection(),
                 SizedBox(height: ManagerHeight.h8),
@@ -214,6 +337,71 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
               ),
             ],
           ),
+          SizedBox(height: ManagerHeight.h16),
+          // ✅ معلومات المستخدم الحالي
+          if (isMember)
+            Container(
+              padding: EdgeInsets.all(ManagerWidth.w12),
+              decoration: BoxDecoration(
+                color: ManagerColors.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: ManagerColors.primaryColor.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.person, color: ManagerColors.primaryColor, size: 20),
+                  SizedBox(width: ManagerWidth.w8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'أنت في هذه المجموعة',
+                          style: getBoldTextStyle(
+                            fontSize: ManagerFontSize.s14,
+                            color: ManagerColors.primaryColor,
+                          ),
+                        ),
+                        SizedBox(height: ManagerHeight.h4),
+                        Text(
+                          _currentUserName.isNotEmpty ? _currentUserName : 'مستخدم',
+                          style: getRegularTextStyle(
+                            fontSize: ManagerFontSize.s13,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        if (_currentUserPhone.isNotEmpty)
+                          Text(
+                            _currentUserPhone,
+                            style: getRegularTextStyle(
+                              fontSize: ManagerFontSize.s12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (isAdmin)
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: ManagerWidth.w8,
+                        vertical: ManagerHeight.h2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'مشرف',
+                        style: getRegularTextStyle(
+                          fontSize: ManagerFontSize.s11,
+                          color: Colors.orange.shade700,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -333,7 +521,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
   }
 
   Widget _buildMemberTile(Map<String, dynamic> member) {
-    final isMe = member['id'] == currentUserId;
+    final isMe = member['id'] == _currentUserId;
     final isMemberAdmin = member['isAdmin'] == true;
 
     return ListTile(
@@ -413,7 +601,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
         ],
       ),
       subtitle: Text(
-        member['bio']?.isNotEmpty == true ? member['bio'] : member['phone'],
+        member['bio']?.isNotEmpty == true ? member['bio'] : (member['phone'] ?? ''),
         style: getRegularTextStyle(
           fontSize: ManagerFontSize.s13,
           color: Colors.grey.shade600,
@@ -876,8 +1064,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
     if (confirm == true && !isCreator) {
       try {
         await _firestore.collection('groups').doc(widget.groupId).update({
-          'participants': FieldValue.arrayRemove([currentUserId]),
-          'admins': FieldValue.arrayRemove([currentUserId]),
+          'participants': FieldValue.arrayRemove([_currentUserId]),
+          'admins': FieldValue.arrayRemove([_currentUserId]),
         });
         Get.back();
         Get.back();
