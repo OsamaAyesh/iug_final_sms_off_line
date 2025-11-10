@@ -26,7 +26,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late ChatController controller;
   final List<String> _tabs = ["الكل", "الدردشات", "المجموعات"];
@@ -38,7 +39,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     controller = ChatDI.controller;
     _tabController = TabController(length: _tabs.length, vsync: this);
     _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) controller.changeTab(_tabController.index);
+      if (!_tabController.indexIsChanging)
+        controller.changeTab(_tabController.index);
     });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await controller.checkUserLoggedIn();
@@ -74,14 +76,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return Obx(() {
       return FloatingActionButton(
         backgroundColor: ManagerColors.primaryColor,
-        onPressed: controller.isUserLoggedIn.value ? _showAddMenu : _showLoginPrompt,
+        onPressed:
+            controller.isUserLoggedIn.value ? _showAddMenu : _showLoginPrompt,
         child: Icon(
           controller.isUserLoggedIn.value ? Icons.add : Icons.login,
           color: Colors.white,
         ),
       );
     });
-  }// ✅ دالة الانتقال إلى الملف الشخصي
+  } // ✅ دالة الانتقال إلى الملف الشخصي
+
   void _goToProfile() {
     if (controller.isUserLoggedIn.value) {
       // تأكد من تهيئة Profile DI أولاً
@@ -133,12 +137,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 // صورة المستخدم - قابلة للنقل للانتقال إلى الملف الشخصي
                 if (controller.isUserLoggedIn.value)
                   GestureDetector(
-                    onTap: _goToProfile, // ✅ دالة جديدة للانتقال إلى الملف الشخصي
+                    onTap: _goToProfile,
+                    // ✅ دالة جديدة للانتقال إلى الملف الشخصي
                     child: CloudinaryAvatar(
-                        imageUrl: imageUrl,
-                        fallbackText: 'User',
-                        radius: 20
-                    ),
+                        imageUrl: imageUrl, fallbackText: 'User', radius: 20),
                   )
                 else
                   GestureDetector(
@@ -150,61 +152,64 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                   ),
 
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: Colors.white),
-                  onSelected: (value) => _handleMenuAction(value, controller),
-                  itemBuilder: (context) => [
-                    // ✅ إضافة خيار الملف الشخصي
-                    if (controller.isUserLoggedIn.value)
-                      const PopupMenuItem(
-                        value: 'profile',
-                        child: Row(
-                          children: [
-                            Icon(Icons.person, color: Colors.blue),
-                            SizedBox(width: 10),
-                            Text('الملف الشخصي'),
-                          ],
-                        ),
-                      ),
-
-                    const PopupMenuItem(
-                      value: 'refresh',
-                      child: Row(
-                        children: [
-                          Icon(Icons.refresh),
-                          SizedBox(width: 10),
-                          Text('تحديث'),
-                        ],
-                      ),
-                    ),
-
-                    if (controller.isUserLoggedIn.value)
-                      const PopupMenuItem(
-                        value: 'logout',
-                        child: Row(
-                          children: [
-                            Icon(Icons.logout, color: Colors.red),
-                            SizedBox(width: 10),
-                            Text('تسجيل الخروج', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
-                      ),
-
-                    if (!controller.isUserLoggedIn.value)
-                      const PopupMenuItem(
-                        value: 'login',
-                        child: Row(
-                          children: [
-                            Icon(Icons.login, color: Colors.green),
-                            SizedBox(width: 10),
-                            Text('تسجيل الدخول', style: TextStyle(color: Colors.green)),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
+                // PopupMenuButton<String>(
+                //   icon: const Icon(Icons.more_vert, color: Colors.white),
+                //   onSelected: (value) => _handleMenuAction(value, controller),
+                //   itemBuilder: (context) => [
+                //     // ✅ إضافة خيار الملف الشخصي
+                //     if (controller.isUserLoggedIn.value)
+                //       const PopupMenuItem(
+                //         value: 'profile',
+                //         child: Row(
+                //           children: [
+                //             Icon(Icons.person, color: Colors.blue),
+                //             SizedBox(width: 10),
+                //             Text('الملف الشخصي'),
+                //           ],
+                //         ),
+                //       ),
+                //
+                //     const PopupMenuItem(
+                //       value: 'refresh',
+                //       child: Row(
+                //         children: [
+                //           Icon(Icons.refresh),
+                //           SizedBox(width: 10),
+                //           Text('تحديث'),
+                //         ],
+                //       ),
+                //     ),
+                //
+                //     if (controller.isUserLoggedIn.value)
+                //       const PopupMenuItem(
+                //         value: 'logout',
+                //         child: Row(
+                //           children: [
+                //             Icon(Icons.logout, color: Colors.red),
+                //             SizedBox(width: 10),
+                //             Text('تسجيل الخروج',
+                //                 style: TextStyle(color: Colors.red)),
+                //           ],
+                //         ),
+                //       ),
+                //
+                //     if (!controller.isUserLoggedIn.value)
+                //       const PopupMenuItem(
+                //         value: 'login',
+                //         child: Row(
+                //           children: [
+                //             Icon(Icons.login, color: Colors.green),
+                //             SizedBox(width: 10),
+                //             Text('تسجيل الدخول',
+                //                 style: TextStyle(color: Colors.green)),
+                //           ],
+                //         ),
+                //       ),
+                //   ],
+                // ),
               ],
-            ),            SizedBox(height: ManagerHeight.h16),
+            ),
+            SizedBox(height: ManagerHeight.h16),
             _buildSearchBar(),
           ],
         ),
@@ -224,6 +229,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         onChanged: controller.onSearchChanged,
         decoration: InputDecoration(
           hintText: "ابحث في المحادثات...",
+          hintStyle: getRegularTextStyle(
+            fontSize: ManagerFontSize.s14,
+            color: ManagerColors.greyWithColor,
+          ),
           prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
           border: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(
@@ -291,7 +300,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           SizedBox(height: ManagerHeight.h10),
           Text("حدثت مشكلة أثناء تحميل المحادثات",
               style: getBoldTextStyle(
-                  fontSize: ManagerFontSize.s14, color: Colors.orange.shade400)),
+                  fontSize: ManagerFontSize.s14,
+                  color: Colors.orange.shade400)),
           SizedBox(height: ManagerHeight.h10),
           OutlinedButton(
             onPressed: controller.smartRefresh,
@@ -307,7 +317,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey.shade300),
+          Icon(Icons.chat_bubble_outline,
+              size: 80, color: Colors.grey.shade300),
           SizedBox(height: ManagerHeight.h16),
           Text(
             controller.isUserLoggedIn.value ? "لا توجد محادثات" : "مرحباً بك!",
@@ -360,7 +371,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         radius: 24,
       ),
       title: Text(chat.name,
-          style: getBoldTextStyle(fontSize: ManagerFontSize.s14, color: ManagerColors.black)),
+          style: getBoldTextStyle(
+              fontSize: ManagerFontSize.s14, color: ManagerColors.black)),
       subtitle: Text(
         chat.lastMessage,
         maxLines: 1,
@@ -372,7 +384,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ),
       trailing: Text(
         chat.time,
-        style: getRegularTextStyle(fontSize: ManagerFontSize.s10, color: Colors.grey),
+        style: getRegularTextStyle(
+            fontSize: ManagerFontSize.s10, color: Colors.grey),
       ),
     );
   }
@@ -383,36 +396,41 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         if (controller.isUserLoggedIn.value) {
           controller.markChatAsRead(chat.id, true);
           Get.to(() => ChatGroupScreen(
-            groupId: chat.id,
-            groupName: chat.name,
-            groupImage: chat.imageUrl,
-            participantsCount: chat.membersCount.toString(),
-          ));
+                groupId: chat.id,
+                groupName: chat.name,
+                groupImage: chat.imageUrl,
+                participantsCount: chat.membersCount.toString(),
+              ));
         } else {
           _showLoginPrompt();
         }
       },
       leading: Stack(
         children: [
-          CloudinaryAvatar(imageUrl: chat.imageUrl, fallbackText: chat.name, radius: 24),
+          CloudinaryAvatar(
+              imageUrl: chat.imageUrl, fallbackText: chat.name, radius: 24),
           Positioned(
             bottom: 0,
             right: 0,
             child: Container(
               padding: const EdgeInsets.all(2),
-              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-              child: Icon(Icons.group, size: 14, color: ManagerColors.primaryColor),
+              decoration: const BoxDecoration(
+                  color: Colors.white, shape: BoxShape.circle),
+              child: Icon(Icons.group,
+                  size: 14, color: ManagerColors.primaryColor),
             ),
           ),
         ],
       ),
       title: Text(chat.name,
-          style: getBoldTextStyle(fontSize: ManagerFontSize.s14, color: ManagerColors.black)),
+          style: getBoldTextStyle(
+              fontSize: ManagerFontSize.s14, color: ManagerColors.black)),
       subtitle: Text(
         chat.lastMessage,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: getRegularTextStyle(fontSize: ManagerFontSize.s12, color: Colors.grey),
+        style: getRegularTextStyle(
+            fontSize: ManagerFontSize.s12, color: Colors.grey),
       ),
       trailing: SizedBox(
         width: 80,
@@ -421,10 +439,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(chat.time,
-                style: getRegularTextStyle(fontSize: ManagerFontSize.s10, color: Colors.grey)),
+                style: getRegularTextStyle(
+                    fontSize: ManagerFontSize.s10, color: Colors.grey)),
             SizedBox(height: ManagerHeight.h4),
             Text("${chat.membersCount} مشاركين",
-                style: getRegularTextStyle(fontSize: ManagerFontSize.s10, color: Colors.grey)),
+                style: getRegularTextStyle(
+                    fontSize: ManagerFontSize.s10, color: Colors.grey)),
           ],
         ),
       ),
@@ -438,10 +458,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
       if (otherUserId != null) {
         Get.to(() => SingleChatScreen(
-          otherUserId: otherUserId,
-          otherUserName: chat.name,
-          otherUserImage: chat.imageUrl,
-        ));
+              otherUserId: otherUserId,
+              otherUserName: chat.name,
+              otherUserImage: chat.imageUrl,
+            ));
       } else {
         Get.snackbar(
           'خطأ',
@@ -483,23 +503,25 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Future<bool> _confirmDelete(ChatModel chat) async {
     return await Get.dialog<bool>(
-      AlertDialog(
-        title: const Text('حذف المحادثة'),
-        content: Text(
-          chat.isGroup
-              ? 'هل تريد مغادرة المجموعة "${chat.name}"؟'
-              : 'هل تريد حذف المحادثة مع "${chat.name}"؟',
-        ),
-        actions: [
-          TextButton(onPressed: () => Get.back(result: false), child: const Text('إلغاء')),
-          TextButton(
-            onPressed: () => Get.back(result: true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('حذف'),
+          AlertDialog(
+            title: const Text('حذف المحادثة'),
+            content: Text(
+              chat.isGroup
+                  ? 'هل تريد مغادرة المجموعة "${chat.name}"؟'
+                  : 'هل تريد حذف المحادثة مع "${chat.name}"؟',
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Get.back(result: false),
+                  child: const Text('إلغاء')),
+              TextButton(
+                onPressed: () => Get.back(result: true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('حذف'),
+              ),
+            ],
           ),
-        ],
-      ),
-    ) ??
+        ) ??
         false;
   }
 
@@ -526,7 +548,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
             SizedBox(height: ManagerHeight.h20),
             Text('إضافة جديد',
-                style: getBoldTextStyle(fontSize: ManagerFontSize.s18, color: ManagerColors.black)),
+                style: getBoldTextStyle(
+                    fontSize: ManagerFontSize.s18, color: ManagerColors.black)),
             SizedBox(height: ManagerHeight.h20),
             _buildMenuItem(
               icon: Icons.person_add,
@@ -572,9 +595,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         child: Icon(icon, color: iconColor, size: 24),
       ),
       title: Text(title,
-          style: getBoldTextStyle(fontSize: ManagerFontSize.s15, color: ManagerColors.black)),
+          style: getBoldTextStyle(
+              fontSize: ManagerFontSize.s15, color: ManagerColors.black)),
       subtitle: Text(subtitle,
-          style: getRegularTextStyle(fontSize: ManagerFontSize.s13, color: Colors.grey.shade600)),
+          style: getRegularTextStyle(
+              fontSize: ManagerFontSize.s13, color: Colors.grey.shade600)),
       onTap: onTap,
     );
   }

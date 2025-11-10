@@ -1,4 +1,5 @@
 import 'package:app_mobile/core/util/snack_bar.dart';
+import 'package:app_mobile/features/home/home_feature/presentation/pages/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:app_mobile/core/resources/manager_colors.dart';
@@ -118,7 +119,8 @@ class _SuccessVerifyScreenState extends State<SuccessVerifyScreen>
                       paddingWidth: 0,
                       onPressed: () {
                         // Navigate to home or next screen
-                        AppSnackbar.success("تم التحقق بنجاح، انتقل إلى الرئيسية");
+                        Get.to(HomeScreen());
+                        // AppSnackbar.success("تم التحقق بنجاح، انتقل إلى الرئيسية");
                       },
                     ),
 
